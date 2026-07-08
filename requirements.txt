@@ -1,0 +1,7 @@
+kiteconnect
+pandas
+numpy
+requests
+python-dotenv
+openpyxl
+matplotlib
