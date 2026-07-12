@@ -48,11 +48,33 @@ class LivePaperTradingRunnerState:
     running: bool = False
 
 
+@dataclass
+class LivePaperTradingCycleResult:
+    """
+    Result returned after GARUDA processes
+    one live paper-trading symbol cycle.
+    """
+
+    status: str
+
+    symbol: str
+
+    candle_time: object = None
+
+    strategy_result: object = None
+
+    session_result: object = None
+
+    market_candle_result: object = None
+
+    reason: str = None
+
+
 class LivePaperTradingRunner:
     """
     GARUDA live paper-trading runner.
 
-    Part 13E responsibilities:
+    Responsibilities:
 
     - Maintain multi-symbol runtime state.
     - Detect new market candles.
@@ -61,21 +83,8 @@ class LivePaperTradingRunner:
     - Track open and closed positions.
     - Track executed and rejected trades.
     - Enforce trading-session timing.
+    - Coordinate one complete symbol cycle.
     - Provide visible runtime summaries.
-
-    Later integration:
-
-    Kite Market Data
-        ↓
-    New Candle Detection
-        ↓
-    Existing ORB + VWAP Strategy
-        ↓
-    Existing Risk Manager
-        ↓
-    Existing Paper Trading Session Engine
-        ↓
-    Automatic SL / Target Exit
     """
 
     def __init__(
@@ -370,11 +379,6 @@ class LivePaperTradingRunner:
         """
         Return True when GARUDA may create
         a new entry for the symbol.
-
-        Entry is blocked when:
-
-        - Position is already open.
-        - Same candle already created an entry.
         """
 
         symbol_state = (
@@ -498,6 +502,316 @@ class LivePaperTradingRunner:
         symbol_state.closed_trade_count += 1
 
         return symbol_state
+
+
+    # --------------------------------------------------
+    # SINGLE-CYCLE ORCHESTRATION
+    # --------------------------------------------------
+
+    def process_symbol_cycle(
+        self,
+        symbol,
+        dataframe,
+        strategy,
+        session_engine,
+        lot_size=1,
+        current_exposure=0.0,
+        current_open_risk=0.0,
+        current_open_positions=0,
+        daily_realized_pnl=0.0,
+        stop_loss_pct=1.0,
+        target_pct=2.0,
+    ):
+        """
+        Process one complete GARUDA live
+        paper-trading cycle for one symbol.
+
+        Flow:
+
+        Validate Runner
+            ↓
+        Validate Market Data
+            ↓
+        Detect Latest Candle
+            ↓
+        Market Session Check
+            ↓
+        Duplicate Candle Check
+            ↓
+        Mark Candle Processed
+            ↓
+        Existing Position?
+            ↓
+        Automatic Exit Evaluation
+            OR
+        Strategy Evaluation
+            ↓
+        Risk-Managed Paper Entry
+        """
+
+        normalized_symbol = (
+            symbol.upper()
+        )
+
+        # --------------------------------------------------
+        # RUNNER MUST BE ACTIVE
+        # --------------------------------------------------
+
+        if not self.state.running:
+
+            return LivePaperTradingCycleResult(
+                status="RUNNER_NOT_ACTIVE",
+                symbol=normalized_symbol,
+                reason=(
+                    "GARUDA live paper-trading "
+                    "runner is not active."
+                ),
+            )
+
+        # --------------------------------------------------
+        # VALIDATE REGISTERED SYMBOL
+        # --------------------------------------------------
+
+        symbol_state = self.get_symbol_state(
+            normalized_symbol
+        )
+
+        # --------------------------------------------------
+        # VALIDATE MARKET DATA
+        # --------------------------------------------------
+
+        if dataframe is None or dataframe.empty:
+
+            return LivePaperTradingCycleResult(
+                status="NO_MARKET_DATA",
+                symbol=normalized_symbol,
+                reason="Market data unavailable.",
+            )
+
+        # --------------------------------------------------
+        # GET LATEST CANDLE
+        # --------------------------------------------------
+
+        latest_candle = dataframe.iloc[-1]
+
+        candle_time = latest_candle["datetime"]
+
+        # --------------------------------------------------
+        # MARKET SESSION CHECK
+        # --------------------------------------------------
+
+        if not self.is_market_session_active(
+            candle_time
+        ):
+
+            return LivePaperTradingCycleResult(
+                status="MARKET_SESSION_INACTIVE",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                reason=(
+                    "Latest candle is outside "
+                    "the configured market session."
+                ),
+            )
+
+        # --------------------------------------------------
+        # DUPLICATE CANDLE CHECK
+        # --------------------------------------------------
+
+        if not self.is_new_candle(
+            symbol=normalized_symbol,
+            candle_time=candle_time,
+        ):
+
+            return LivePaperTradingCycleResult(
+                status="DUPLICATE_CANDLE",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                reason=(
+                    "Latest candle was already processed."
+                ),
+            )
+
+        # --------------------------------------------------
+        # MARK CANDLE PROCESSED
+        # --------------------------------------------------
+
+        self.mark_candle_processed(
+            symbol=normalized_symbol,
+            candle_time=candle_time,
+        )
+
+        # --------------------------------------------------
+        # EXISTING OPEN POSITION
+        # --------------------------------------------------
+
+        if symbol_state.position_open:
+
+            market_candle_result = (
+                session_engine.process_market_candle(
+                    symbol=normalized_symbol,
+                    candle=latest_candle,
+                )
+            )
+
+            if (
+                market_candle_result.status
+                == "POSITION_CLOSED"
+            ):
+
+                self.record_position_closed(
+                    normalized_symbol
+                )
+
+            return LivePaperTradingCycleResult(
+                status=market_candle_result.status,
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                market_candle_result=(
+                    market_candle_result
+                ),
+            )
+
+        # --------------------------------------------------
+        # NEW ENTRY TIME CHECK
+        # --------------------------------------------------
+
+        if not self.is_new_entry_allowed_by_time(
+            candle_time
+        ):
+
+            return LivePaperTradingCycleResult(
+                status="ENTRY_TIME_CLOSED",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                reason=(
+                    "New paper entries are no "
+                    "longer allowed by time."
+                ),
+            )
+
+        # --------------------------------------------------
+        # STRATEGY EVALUATION
+        # --------------------------------------------------
+
+        strategy_result = strategy.evaluate(
+            symbol=normalized_symbol,
+            dataframe=dataframe,
+        )
+
+        # --------------------------------------------------
+        # NO SIGNAL
+        # --------------------------------------------------
+
+        if strategy_result.signal == "NO_SIGNAL":
+
+            return LivePaperTradingCycleResult(
+                status="NO_SIGNAL",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                strategy_result=strategy_result,
+            )
+
+        # --------------------------------------------------
+        # RECORD ACTIONABLE SIGNAL
+        # --------------------------------------------------
+
+        self.record_signal(
+            normalized_symbol
+        )
+
+        # --------------------------------------------------
+        # DUPLICATE ENTRY CHECK
+        # --------------------------------------------------
+
+        if not self.can_create_entry(
+            symbol=normalized_symbol,
+            candle_time=candle_time,
+        ):
+
+            return LivePaperTradingCycleResult(
+                status="ENTRY_BLOCKED",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                strategy_result=strategy_result,
+                reason=(
+                    "GARUDA entry controls "
+                    "blocked the trade."
+                ),
+            )
+
+        # --------------------------------------------------
+        # PROCESS RISK-MANAGED ENTRY
+        # --------------------------------------------------
+
+        session_result = (
+            session_engine.process_entry(
+                strategy_result=strategy_result,
+                market_price=(
+                    latest_candle["close"]
+                ),
+                lot_size=lot_size,
+                current_exposure=current_exposure,
+                current_open_risk=current_open_risk,
+                current_open_positions=(
+                    current_open_positions
+                ),
+                daily_realized_pnl=(
+                    daily_realized_pnl
+                ),
+                stop_loss_pct=stop_loss_pct,
+                target_pct=target_pct,
+            )
+        )
+
+        # --------------------------------------------------
+        # RISK REJECTION
+        # --------------------------------------------------
+
+        if session_result.status == "REJECTED":
+
+            self.record_rejection(
+                normalized_symbol
+            )
+
+            return LivePaperTradingCycleResult(
+                status="REJECTED",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                strategy_result=strategy_result,
+                session_result=session_result,
+            )
+
+        # --------------------------------------------------
+        # SUCCESSFUL EXECUTION
+        # --------------------------------------------------
+
+        if session_result.status == "POSITION_OPEN":
+
+            self.record_execution(
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+            )
+
+            return LivePaperTradingCycleResult(
+                status="POSITION_OPEN",
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+                strategy_result=strategy_result,
+                session_result=session_result,
+            )
+
+        # --------------------------------------------------
+        # FALLBACK RESULT
+        # --------------------------------------------------
+
+        return LivePaperTradingCycleResult(
+            status=session_result.status,
+            symbol=normalized_symbol,
+            candle_time=candle_time,
+            strategy_result=strategy_result,
+            session_result=session_result,
+        )
 
 
     # --------------------------------------------------
