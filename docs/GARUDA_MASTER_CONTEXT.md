@@ -1662,4 +1662,1220 @@ Continue from the documented checkpoint and allow the repository code and passin
 
 ---
 
-**END OF GARUDA MASTER PROJECT CONTEXT**
+# 24. AUTHORITATIVE CHECKPOINT UPDATE — 2026-07-14
+
+This section supersedes outdated checkpoint, test-count, current-development-step, and Module 9 status information appearing earlier in this document.
+
+When information in earlier sections conflicts with this section, this section is authoritative.
+
+Repository source code and passing tests remain the final technical authority.
+
+---
+
+# 25. CURRENT GIT CHECKPOINT
+
+The current verified Git checkpoint is:
+
+```text
+ffde7d6
+```
+
+Commit message:
+
+```text
+Complete Module 9 multi-symbol polling and stale market data protection
+```
+
+Recent Git history:
+
+```text
+ffde7d6 Complete Module 9 multi-symbol polling and stale market data protection
+
+4347807 Complete Module 9 single-cycle paper trading orchestration
+
+fe47358 Complete Module 9 paper trading foundation and live runner controls
+
+d2469b9 Complete Module 8 risk management and position sizing
+
+1e137e5 Complete Module 7 backtesting engine and pytest migration
+```
+
+The branch is:
+
+```text
+main
+```
+
+The local branch and `origin/main` are synchronized at checkpoint:
+
+```text
+ffde7d6
+```
+
+Two temporary repository-inspection files remain untracked:
+
+```text
+garuda_part_13f2_dependencies.txt
+garuda_part_13f2_interfaces.txt
+```
+
+These files are development snapshots and are not part of the authoritative GARUDA source code.
+
+---
+
+# 26. CURRENT AUTHORITATIVE TEST CHECKPOINT
+
+The current full GARUDA regression checkpoint is:
+
+```text
+284 PASSED
+```
+
+Focused multi-symbol polling tests:
+
+```text
+26 PASSED
+```
+
+The progression to the current checkpoint was:
+
+```text
+245 passed
+    ↓
+Single-Cycle Paper Trading Orchestration
+    ↓
+258 passed
+    ↓
+Additional Module 9 Development
+    ↓
+274 passed
+    ↓
+276 passed
+    ↓
+Kite Market-Data Interface Regression Test
+    ↓
+277 passed
+    ↓
+Stale Market Data Protection Tests
+    ↓
+284 passed
+```
+
+Before continuing major development, the following command should remain successful:
+
+```powershell
+$env:PYTHONPATH="src"
+pytest -q
+```
+
+Expected result:
+
+```text
+284 passed
+```
+
+Do not knowingly continue major GARUDA development with failing regression tests.
+
+---
+
+# 27. MODULE 9 CURRENT STATUS
+
+Module 9 — Paper Trading Engine has progressed significantly beyond the earlier checkpoint documented in this file.
+
+Current status:
+
+```text
+MODULE 9 — ADVANCED DEVELOPMENT
+```
+
+Completed Module 9 capabilities include:
+
+- paper account;
+- paper orders;
+- paper order management;
+- simulated broker execution;
+- paper positions;
+- paper position management;
+- risk-managed paper execution;
+- paper trading sessions;
+- automatic stop-loss and target handling;
+- account-equity integration;
+- live Kite market-data adapter;
+- live market-data demonstration;
+- real ORB+VWAP strategy demonstration;
+- real strategy-to-risk integration;
+- live paper execution demonstration;
+- live paper trading runner;
+- single-cycle paper trading orchestration;
+- finite multi-symbol polling;
+- real Kite multi-symbol market-data retrieval;
+- portfolio-state integration;
+- current-price exposure calculation;
+- stale-market-data protection.
+
+No real broker orders are currently sent.
+
+GARUDA remains in controlled paper-trading development.
+
+---
+
+# 28. MODULE 9 PART 13F-1 — COMPLETED
+
+## Single-Cycle Paper Trading Orchestration
+
+Status:
+
+```text
+COMPLETE
+```
+
+Git checkpoint:
+
+```text
+4347807
+```
+
+Commit:
+
+```text
+Complete Module 9 single-cycle paper trading orchestration
+```
+
+The completed single-cycle orchestration architecture connects existing GARUDA components without duplicating their responsibilities.
+
+Verified conceptual flow:
+
+```text
+Receive Symbol
+    ↓
+Receive Market DataFrame
+    ↓
+Check Latest Candle
+    ↓
+Detect Duplicate Candle
+    ↓
+Determine Open Position State
+    ↓
+NO OPEN POSITION
+    ↓
+Check Entry Time
+    ↓
+Run Existing Strategy
+    ↓
+NO SIGNAL → RETURN
+    ↓
+BUY / SELL SIGNAL
+    ↓
+Calculate Existing Exit Levels
+    ↓
+Run Existing Risk Manager
+    ↓
+REJECTED → RECORD AND RETURN
+    ↓
+APPROVED
+    ↓
+Create Paper Order
+    ↓
+Simulated Fill
+    ↓
+Open Virtual Position
+```
+
+For an already open position:
+
+```text
+Receive New Candle
+    ↓
+Update Market Price
+    ↓
+Calculate Unrealized P&L
+    ↓
+Evaluate Existing Exit Rules
+    ↓
+NO EXIT → HOLD
+    ↓
+STOP LOSS / TARGET
+    ↓
+Close Position
+    ↓
+Calculate Realized P&L
+    ↓
+Update Paper Account
+    ↓
+Update Runner State
+```
+
+A deterministic demonstration successfully verified:
+
+```text
+Cycle 1
+BUY signal
+    ↓
+Risk approval
+    ↓
+Paper order
+    ↓
+Position opened
+
+Cycle 2
+New market candle
+    ↓
+Position monitored
+    ↓
+Unrealized profit
+    ↓
+Position held
+
+Cycle 3
+Target reached
+    ↓
+Automatic exit
+    ↓
+Realized profit
+    ↓
+Account updated
+```
+
+Verified demonstration result:
+
+```text
+Initial Capital : 100,000.00
+Final Capital   : 102,000.00
+Net P&L         : 2,000.00
+Return          : 2.00%
+Orders Created  : 1
+Open Positions  : 0
+Closed Trades   : 1
+```
+
+This verified the complete controlled single-cycle orchestration path.
+
+---
+
+# 29. MODULE 9 PART 13F-2 — COMPLETED
+
+## Finite Real Kite Multi-Symbol Polling
+
+Status:
+
+```text
+COMPLETE
+```
+
+Git checkpoint:
+
+```text
+ffde7d6
+```
+
+Primary files:
+
+```text
+src/execution/live_multi_symbol_polling.py
+src/execution/live_multi_symbol_polling_demo.py
+tests/test_live_multi_symbol_polling.py
+```
+
+The polling engine was intentionally implemented as a finite polling engine rather than an uncontrolled infinite loop.
+
+Current architecture:
+
+```text
+Registered Symbols
+    ↓
+Fetch Real Intraday Market Data
+    ↓
+Validate Market Data
+    ↓
+Validate Market Data Freshness
+    ↓
+Calculate Current Portfolio State
+    ↓
+Call Existing LivePaperTradingRunner
+    ↓
+Call Existing PaperTradingSessionEngine
+    ↓
+Collect Symbol Result
+    ↓
+Continue Through Registered Symbols
+    ↓
+Complete Polling Cycle
+    ↓
+Optional Wait
+    ↓
+Next Finite Cycle
+```
+
+The polling engine does not duplicate:
+
+- strategy logic;
+- risk logic;
+- order logic;
+- position logic;
+- stop-loss logic;
+- target logic;
+- realized P&L logic.
+
+Those responsibilities remain in existing GARUDA components.
+
+---
+
+# 30. REAL KITE MARKET-DATA INTERFACE CORRECTION
+
+During real multi-symbol polling integration, the following interface mismatch was discovered.
+
+The polling engine initially attempted:
+
+```text
+lookback_days
+```
+
+as an argument to:
+
+```text
+fetch_live_intraday_data()
+```
+
+However, the actual market-data adapter interface is:
+
+```python
+fetch_live_intraday_data(
+    kite,
+    instrument_token,
+    from_date,
+    to_date,
+    interval="5minute",
+)
+```
+
+The polling engine was corrected to dynamically calculate:
+
+```text
+to_date = current datetime
+
+from_date = to_date - configured lookback days
+```
+
+and call the existing adapter using:
+
+```text
+kite
+instrument_token
+from_date
+to_date
+interval
+```
+
+A dedicated regression test was added to verify that the polling engine supplies the correct date-range interface.
+
+This correction increased the focused polling test count from:
+
+```text
+18 passed
+```
+
+to:
+
+```text
+19 passed
+```
+
+and the full regression checkpoint to:
+
+```text
+277 passed
+```
+
+Architectural lesson:
+
+> New GARUDA components must conform to actual existing source interfaces rather than assumed interfaces.
+
+---
+
+# 31. PORTFOLIO STATE INTEGRATION
+
+The multi-symbol polling engine calculates the current GARUDA portfolio state before passing a fresh market candle to the existing orchestration layer.
+
+Current portfolio-state values include:
+
+```text
+current_exposure
+current_open_risk
+current_open_positions
+daily_realized_pnl
+```
+
+Current exposure is calculated using:
+
+```text
+position quantity × current market price
+```
+
+rather than entry price.
+
+This allows portfolio exposure to reflect the latest known value of open positions.
+
+Current open risk uses active exit levels and position direction.
+
+For LONG positions:
+
+```text
+(entry price - stop loss) × quantity
+```
+
+For SHORT positions:
+
+```text
+(stop loss - entry price) × quantity
+```
+
+The existing RiskManager remains authoritative for trade approval and rejection.
+
+---
+
+# 32. STALE MARKET DATA PROTECTION
+
+## Part 13F-2C
+
+Status:
+
+```text
+COMPLETE
+```
+
+During the first successful real Kite multi-symbol polling demonstration, GARUDA fetched old Friday candles while running outside the active trading date.
+
+The existing entry-time protection prevented trades because the latest candles were timestamped at 15:25.
+
+However, this exposed an architectural risk:
+
+> GARUDA should not allow an old trading-day candle to reach strategy, risk, or paper execution merely because its intraday time happens to satisfy another validation rule.
+
+Stale-market-data protection was therefore added to the polling layer.
+
+Current flow:
+
+```text
+Fetch Market Data
+    ↓
+DataFrame Missing?
+    ├── YES → NO_MARKET_DATA
+    ↓ NO
+DataFrame Empty?
+    ├── YES → NO_MARKET_DATA
+    ↓ NO
+Get Latest Candle Time
+    ↓
+Compare Candle Date With Current Date
+    ↓
+OLDER DATE?
+    ├── YES → STALE_MARKET_DATA
+    ↓ NO
+Calculate Portfolio State
+    ↓
+Call Existing Runner
+```
+
+Important architectural rule:
+
+```text
+STALE MARKET DATA
+    ↓
+BLOCKED BY POLLING ENGINE
+    ↓
+DO NOT CALL process_symbol_cycle()
+    ↓
+DO NOT RUN STRATEGY
+    ↓
+DO NOT RUN RISK MANAGER
+    ↓
+DO NOT CREATE ORDER
+    ↓
+DO NOT ALTER POSITION
+    ↓
+DO NOT ALTER ACCOUNT
+```
+
+The current-time dependency is injectable.
+
+This allows deterministic testing rather than relying on the computer's actual clock.
+
+Timezone handling supports:
+
+- timezone-naive test timestamps;
+- timezone-aware Kite timestamps;
+- conversion between current-time and candle-time timezones.
+
+Focused stale-data tests verify:
+
+- current-date data is not stale;
+- previous-date data is stale;
+- timezone-aware current-date data is accepted;
+- timezone-aware previous-date data is rejected;
+- timezone conversion correctly detects stale dates;
+- stale data never reaches the runner;
+- stale data cannot create an order, position, or account change.
+
+After these tests were added and existing tests were made deterministic:
+
+```text
+26 focused tests passed
+```
+
+Full regression:
+
+```text
+284 passed
+```
+
+---
+
+# 33. REAL KITE FIVE-SYMBOL POLLING VERIFICATION
+
+The controlled real Kite multi-symbol demonstration has been successfully executed.
+
+Current initial universe:
+
+```text
+INFY
+TCS
+RELIANCE
+HDFCBANK
+ICICIBANK
+```
+
+Verified symbol resolution:
+
+```text
+INFY       → 408065
+TCS        → 2953217
+RELIANCE   → 738561
+HDFCBANK   → 341249
+ICICIBANK  → 1270529
+```
+
+Verified polling result:
+
+```text
+Requested Symbols  : 5
+Registered Symbols : 5
+Failed Symbols     : 0
+
+Requested Cycles   : 1
+Completed Cycles   : 1
+
+Total Symbol Polls : 5
+Successful Polls   : 5
+Failed Polls       : 0
+```
+
+The latest verified real-market demonstration used current-date candles:
+
+```text
+2026-07-14 15:25:00+05:30
+```
+
+Therefore stale-data protection correctly allowed the candles to continue through the pipeline.
+
+The existing runner then returned:
+
+```text
+ENTRY_TIME_CLOSED
+```
+
+for all five symbols because new entries were no longer permitted at 15:25.
+
+Verified final state:
+
+```text
+Initial Capital     : 100,000.00
+Current Capital     : 100,000.00
+Net Realized P&L    : 0.00
+
+Current Exposure    : 0.00
+Current Open Risk   : 0.00
+Open Positions      : 0
+
+Orders Created      : 0
+Positions Open      : 0
+
+Processed Candles   : 5
+Generated Signals   : 0
+Executed Trades     : 0
+Rejected Trades     : 0
+Closed Trades       : 0
+```
+
+This is correct behavior.
+
+Verified flow:
+
+```text
+REAL KITE DATA
+    ↓
+FRESHNESS CHECK
+    ↓
+CURRENT TRADING DATE
+    ↓
+PASS
+    ↓
+POLLING ENGINE
+    ↓
+EXISTING RUNNER
+    ↓
+ENTRY-TIME CHECK
+    ↓
+15:25 CANDLE
+    ↓
+ENTRY_TIME_CLOSED
+    ↓
+NO STRATEGY SIGNAL
+    ↓
+NO ORDER
+    ↓
+NO POSITION
+```
+
+---
+
+# 34. KITE AUTHENTICATION WORKFLOW
+
+Kite access tokens may expire or become invalid.
+
+The current `auth.py` defines authentication functions but may not execute an interactive authentication flow when run directly.
+
+Running:
+
+```powershell
+python src/broker/auth.py
+```
+
+may therefore produce no output.
+
+Current manual authentication workflow:
+
+Generate login URL:
+
+```powershell
+$env:PYTHONPATH="src"
+python -c "from broker.auth import generate_login_url; generate_login_url()"
+```
+
+Open the generated URL and complete Kite login.
+
+Copy only the actual `request_token` value from the redirected URL.
+
+Do not share the request token in ChatGPT or commit it to Git.
+
+Generate and save the access token:
+
+```powershell
+python -c "from broker.auth import generate_access_token; generate_access_token('ACTUAL_REQUEST_TOKEN')"
+```
+
+Verify session:
+
+```powershell
+python -c "from broker.session_manager import create_authenticated_session; create_authenticated_session()"
+```
+
+Expected successful status:
+
+```text
+GARUDA Broker Session: READY
+```
+
+Then run the required real Kite demonstration.
+
+Future improvement:
+
+Create a safe interactive authentication command that:
+
+```text
+Generate Login URL
+    ↓
+Display URL
+    ↓
+Ask User for Request Token
+    ↓
+Generate Access Token
+    ↓
+Save Access Token
+    ↓
+Verify Session
+```
+
+This is a usability enhancement and should not disrupt the current verified broker architecture.
+
+---
+
+# 35. CURRENT MODULE 9 ARCHITECTURE
+
+The verified Module 9 development architecture is now:
+
+```text
+KITE AUTHENTICATION
+    ↓
+INSTRUMENT RESOLUTION
+    ↓
+REAL MARKET DATA
+    ↓
+GARUDA STANDARD DATAFRAME
+    ↓
+FINITE MULTI-SYMBOL POLLING ENGINE
+    ↓
+MARKET DATA AVAILABILITY CHECK
+    ↓
+STALE MARKET DATA CHECK
+    ↓
+CURRENT PORTFOLIO STATE
+    ↓
+LIVE PAPER TRADING RUNNER
+    ↓
+NEW-CANDLE DETECTION
+    ↓
+DUPLICATE-CANDLE PREVENTION
+    ↓
+OPEN POSITION?
+    ├── YES
+    │     ↓
+    │   UPDATE MARKET PRICE
+    │     ↓
+    │   UNREALIZED P&L
+    │     ↓
+    │   EXISTING EXIT RULES
+    │     ↓
+    │   HOLD OR EXIT
+    │
+    ↓ NO
+ENTRY-TIME CHECK
+    ↓
+EXISTING STRATEGY
+    ↓
+NO SIGNAL → CONTINUE
+    ↓
+BUY / SELL
+    ↓
+EXISTING EXIT-LEVEL CALCULATION
+    ↓
+EXISTING RISK MANAGER
+    ↓
+REJECTED → RECORD AND CONTINUE
+    ↓
+APPROVED
+    ↓
+PAPER ORDER
+    ↓
+SIMULATED BROKER
+    ↓
+VIRTUAL POSITION
+    ↓
+NEXT MARKET CANDLE
+```
+
+This architecture should be preserved.
+
+---
+
+# 36. CURRENT DEVELOPMENT PRINCIPLES
+
+The following principles have been reinforced during Module 9 development.
+
+## 36.1 Repository Code Is Final Technical Authority
+
+The Master Context provides continuity.
+
+However:
+
+```text
+CURRENT SOURCE CODE
++
+CURRENT TESTS
++
+CURRENT GIT CHECKPOINT
+```
+
+remain the final technical authority.
+
+---
+
+## 36.2 Do Not Guess Existing Interfaces
+
+Before integrating a new component:
+
+```text
+Inspect Existing Function
+    ↓
+Confirm Parameters
+    ↓
+Confirm Return Type
+    ↓
+Confirm Existing Tests
+    ↓
+Write Integration
+```
+
+Do not design against an assumed interface.
+
+---
+
+## 36.3 Reuse Existing Components
+
+Do not duplicate:
+
+- strategy logic;
+- VWAP logic;
+- ORB logic;
+- exit logic;
+- risk logic;
+- quantity logic;
+- account logic;
+- order logic;
+- position logic;
+- P&L logic.
+
+Use existing tested components.
+
+---
+
+## 36.4 Keep Outer Polling Thin
+
+The polling layer should coordinate.
+
+It should not become a second strategy, risk, or execution engine.
+
+Preferred architecture:
+
+```text
+POLL
+    ↓
+VALIDATE DATA
+    ↓
+CALCULATE REQUIRED STATE
+    ↓
+CALL TESTED ORCHESTRATION
+    ↓
+COLLECT RESULT
+```
+
+---
+
+## 36.5 Prefer Deterministic Tests
+
+Dependencies such as:
+
+```text
+current time
+sleep
+market-data fetcher
+```
+
+should be injectable where practical.
+
+This prevents tests from depending unnecessarily on:
+
+- real clock time;
+- real sleeping;
+- live broker data.
+
+---
+
+## 36.6 Protect the Regression Checkpoint
+
+Current authoritative checkpoint:
+
+```text
+284 PASSED
+```
+
+Focused polling checkpoint:
+
+```text
+26 PASSED
+```
+
+Major changes should follow:
+
+```text
+WRITE COMPONENT
+    ↓
+RUN FOCUSED TESTS
+    ↓
+FIX FAILURES
+    ↓
+RUN FULL REGRESSION
+    ↓
+RUN VISIBLE DEMO WHEN APPROPRIATE
+    ↓
+CREATE GIT CHECKPOINT
+    ↓
+UPDATE MASTER CONTEXT
+```
+
+---
+
+# 37. EXACT NEXT DEVELOPMENT STEP
+
+Parts 13F-1 and 13F-2 are complete.
+
+Do not restart them.
+
+The next development step should continue progressing toward a controlled real-time paper-trading session.
+
+Recommended next component:
+
+```text
+MODULE 9 PART 13F-3
+```
+
+## Controlled Multi-Cycle Live Paper Trading Session
+
+Purpose:
+
+Move from a one-cycle real Kite demonstration to a controlled multi-cycle session while preserving the tested architecture.
+
+The next development should first inspect the current interfaces of:
+
+```text
+src/execution/live_multi_symbol_polling.py
+src/execution/live_paper_trading_runner.py
+src/execution/paper_trading_session.py
+src/data/live_market_data.py
+```
+
+and the relevant tests.
+
+Do not immediately create an infinite unattended trading process.
+
+The preferred next progression is:
+
+```text
+CURRENT FINITE POLLING ENGINE
+    ↓
+CONTROLLED MULTI-CYCLE SESSION
+    ↓
+MARKET-SESSION START/STOP CONTROL
+    ↓
+SAFE POLLING INTERVAL
+    ↓
+NEW-CANDLE PROCESSING
+    ↓
+POSITION MONITORING ACROSS CYCLES
+    ↓
+VISIBLE SESSION SUMMARY
+    ↓
+ERROR ISOLATION
+    ↓
+GRACEFUL STOP
+```
+
+Potential Part 13F-3 requirements should include:
+
+- configurable finite cycle count or controlled duration;
+- safe polling interval;
+- preservation of runner state across cycles;
+- preservation of paper account state across cycles;
+- preservation of open positions across cycles;
+- duplicate-candle protection across cycles;
+- stale-market-data protection;
+- symbol-level failure isolation;
+- clear cycle summaries;
+- clear final session summary;
+- no real orders;
+- no infinite loop during initial development;
+- deterministic focused tests;
+- full regression protection.
+
+Before writing Part 13F-3 code:
+
+```text
+READ THIS MASTER CONTEXT
+    ↓
+VERIFY GIT CHECKPOINT ffde7d6
+    ↓
+VERIFY 284 TESTS PASS
+    ↓
+INSPECT ONLY RELEVANT CURRENT INTERFACES
+    ↓
+DESIGN PART 13F-3
+    ↓
+WRITE COMPLETE FILES
+```
+
+---
+
+# 38. UPDATED NEW-CHAT CONTINUITY INSTRUCTIONS
+
+When starting a new ChatGPT conversation:
+
+1. Upload the latest `GARUDA_MASTER_CONTEXT.md`.
+2. Tell ChatGPT to read the complete Master Context before recommending architecture or writing code.
+3. Treat repository source code and tests as the final technical authority.
+4. Verify Git checkpoint `ffde7d6`.
+5. Verify the documented regression checkpoint of `284 passed`.
+6. Continue from `MODULE 9 PART 13F-3`.
+7. Do not reconstruct Modules 1–9 from memory.
+8. Do not restart Part 13F-1.
+9. Do not restart Part 13F-2.
+10. Inspect only source interfaces relevant to the next development task.
+11. Provide complete files rather than fragmented patches when practical.
+12. Preserve the existing architecture.
+13. Protect the passing-test checkpoint.
+14. Update this Master Context after the next major Git checkpoint.
+
+Recommended new-chat opening message:
+
+> I am continuing development of GARUDA Quant Lab. Read the attached GARUDA_MASTER_CONTEXT.md completely before making recommendations or writing code. Treat it as the project continuity document, while treating the current repository source code and tests as the final technical authority. The current verified Git checkpoint is ffde7d6, the full regression checkpoint is 284 passed, focused multi-symbol polling tests are 26 passed, and Module 9 Parts 13F-1 and 13F-2 are complete. Continue from the documented next development step, Module 9 Part 13F-3. Preserve the existing architecture, inspect actual source interfaces before integration, reuse existing GARUDA components, provide complete files when code changes are required, and protect the passing-test checkpoint.
+
+---
+
+# 39. UPDATED CURRENT CHECKPOINT SUMMARY
+
+```text
+PROJECT
+GARUDA Quant Lab
+
+CURRENT MODULE
+Module 9 — Paper Trading Engine
+
+COMPLETED FOUNDATION
+Modules 1–8
+
+MODULE 9 STATUS
+Advanced Development
+
+PART 13F-1
+COMPLETE
+
+PART 13F-2
+COMPLETE
+
+CURRENT GIT CHECKPOINT
+ffde7d6
+
+CURRENT FULL TEST CHECKPOINT
+284 PASSED
+
+FOCUSED MULTI-SYMBOL POLLING TESTS
+26 PASSED
+
+REAL KITE AUTHENTICATION
+WORKING
+
+REAL KITE MARKET DATA
+WORKING
+
+REAL ORB+VWAP STRATEGY
+WORKING
+
+REAL STRATEGY → RISK INTEGRATION
+WORKING
+
+PAPER ORDERS
+WORKING
+
+SIMULATED BROKER
+WORKING
+
+VIRTUAL POSITIONS
+WORKING
+
+SL/TARGET INTEGRATION
+WORKING
+
+SINGLE-CYCLE ORCHESTRATION
+WORKING
+
+MULTI-SYMBOL RUNNER STATE
+WORKING
+
+FINITE MULTI-SYMBOL POLLING
+WORKING
+
+REAL FIVE-SYMBOL POLLING
+VERIFIED
+
+NEW-CANDLE DETECTION
+WORKING
+
+DUPLICATE-CANDLE PREVENTION
+WORKING
+
+MARKET-TIME CONTROLS
+WORKING
+
+STALE-MARKET-DATA PROTECTION
+WORKING
+
+CURRENT INITIAL SYMBOL UNIVERSE
+INFY
+TCS
+RELIANCE
+HDFCBANK
+ICICIBANK
+
+NEXT DEVELOPMENT STEP
+Module 9 Part 13F-3
+
+NEXT COMPONENT
+Controlled Multi-Cycle Live Paper Trading Session
+
+CURRENT PRIORITY
+Preserve verified GARUDA architecture.
+Progress toward stable controlled live paper trading.
+
+CURRENT DEVELOPMENT RULE
+No real orders.
+
+LONG-TERM SCALING
+Equities → F&O → Crypto
+
+FINAL TECHNICAL AUTHORITY
+Current Repository Code + Current Tests
+```
+
+---
+
+# 40. UPDATED FINAL CONTINUITY RULE
+
+Future GARUDA development should begin with:
+
+```text
+READ LATEST MASTER CONTEXT
+    ↓
+VERIFY GIT CHECKPOINT
+    ↓
+VERIFY TEST CHECKPOINT
+    ↓
+IDENTIFY DOCUMENTED NEXT STEP
+    ↓
+INSPECT ONLY RELEVANT SOURCE INTERFACES
+    ↓
+REUSE EXISTING TESTED COMPONENTS
+    ↓
+WRITE FOCUSED COMPONENT
+    ↓
+RUN FOCUSED TESTS
+    ↓
+RUN FULL REGRESSION
+    ↓
+RUN VISIBLE DEMONSTRATION
+    ↓
+CREATE GIT CHECKPOINT
+    ↓
+UPDATE MASTER CONTEXT
+```
+
+Do not restart GARUDA planning from Module 1.
+
+Do not redesign completed architecture merely because a new ChatGPT conversation lacks previous conversation history.
+
+Do not assume interfaces from memory.
+
+Do not bypass existing RiskManager behavior merely to force trade execution.
+
+Do not send real broker orders during the current development stage.
+
+Continue from the documented checkpoint.
+
+Allow repository code and passing tests to remain the final technical authority.
