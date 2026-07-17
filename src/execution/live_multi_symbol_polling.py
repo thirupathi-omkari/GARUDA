@@ -729,6 +729,19 @@ class LiveMultiSymbolPollingEngine:
         Process all registered symbols once.
         """
 
+        registered_symbols = self.runner.state.symbols
+
+        from datetime import datetime
+
+        print("\n" + "=" * 78)
+        print("GARUDA LIVE PAPER TRADING")
+        print("=" * 78)
+        print(f"Cycle         : {cycle_number}")
+        print(f"Current Time  : {datetime.now():%d-%m-%Y %H:%M:%S}")
+        print(f"Symbols       : {len(registered_symbols)}")
+        print("-" * 78)
+
+
         symbol_results = []
 
         successful_symbols = 0
@@ -761,6 +774,8 @@ class LiveMultiSymbolPollingEngine:
             symbol_results.append(
                 symbol_result
             )
+
+            print(f"{symbol:<12} Status : {symbol_result.status}")
 
             if symbol_result.status == "ERROR":
 
@@ -865,9 +880,28 @@ class LiveMultiSymbolPollingEngine:
 
             if cycle_number < cycles:
 
+                from datetime import datetime, timedelta
+
+                completed = datetime.now()
+                next_poll = completed + timedelta(
+                    seconds=self.poll_interval_seconds
+                )
+
+                print("\n" + "=" * 70)
+                print(f"Cycle {cycle_number} completed successfully.")
+                print(f"Completed At : {completed:%d-%m-%Y %H:%M:%S}")
+                print(f"Next Poll At : {next_poll:%d-%m-%Y %H:%M:%S}")
+                print(f"Waiting      : {int(self.poll_interval_seconds)} seconds")
+                print("=" * 70)
+
                 self.sleep_function(
                     self.poll_interval_seconds
                 )
+
+                print("\n" + "=" * 70)
+                print(f"Starting Cycle {cycle_number + 1}")
+                print(f"Current Time : {datetime.now():%d-%m-%Y %H:%M:%S}")
+                print("=" * 70)
 
         # ----------------------------------------------------
         # FINAL RESULT
