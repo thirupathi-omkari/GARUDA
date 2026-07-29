@@ -79,9 +79,11 @@ INTERVAL = "5minute"
 
 LOOKBACK_DAYS = 5
 
-POLLING_CYCLES = 12
-
 POLL_INTERVAL_SECONDS = 300.0
+
+MARKET_OPEN = time(9, 15)
+MARKET_CLOSE = time(15, 30)
+
 
 SIGNAL_CSV_FILE = (
     PROJECT_ROOT
@@ -207,6 +209,36 @@ def register_symbols(
 
     return registered_symbols, failed_symbols
 
+from math import ceil
+
+def calculate_remaining_cycles():
+    """
+    Calculate the number of polling cycles remaining
+    until market close.
+    """
+
+    now = datetime.now()
+
+    market_close_dt = datetime.combine(
+        now.date(),
+        MARKET_CLOSE,
+    )
+
+    if now >= market_close_dt:
+        return 0
+
+    remaining_seconds = (
+        market_close_dt - now
+    ).total_seconds()
+
+    return max(
+        1,
+        ceil(
+            remaining_seconds /
+            POLL_INTERVAL_SECONDS
+        )
+    )
+
 
 def print_header():
 
@@ -236,7 +268,7 @@ def print_header():
     )
 
     print(
-        f"Requested Cycles     : {POLLING_CYCLES}"
+        "Requested Cycles     : Auto (Until Market Close)"
     )
 
     print(
@@ -379,8 +411,8 @@ def main():
 
     now = datetime.now().time()
 
-    market_open = time(9, 15)
-    market_close = time(15, 30)
+    market_open = MARKET_OPEN
+    market_close = MARKET_CLOSE
 
     print("=" * 70)
     print("GARUDA MARKET STATUS")
@@ -464,8 +496,22 @@ def main():
 
     print()
 
+    remaining_cycles = calculate_remaining_cycles()
+
+    print()
+    print("=" * 70)
+    print("GARUDA SESSION PLAN")
+    print("=" * 70)
+    print(f"Remaining Cycles : {remaining_cycles}")
+    print(
+        f"Estimated Runtime: "
+        f"{remaining_cycles * POLL_INTERVAL_SECONDS / 3600:.2f} Hours"
+    )
+    print("=" * 70)
+    print()
+
     result = controlled_session.run(
-        cycles=POLLING_CYCLES
+        cycles=remaining_cycles
     )
 
     print_final_report(

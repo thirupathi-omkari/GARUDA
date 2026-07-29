@@ -16,11 +16,8 @@ from data.live_market_data import (
 
 
 @dataclass
+@dataclass
 class SymbolPollingResult:
-    """
-    Result produced after GARUDA processes
-    one symbol during one polling cycle.
-    """
 
     cycle_number: int
 
@@ -29,6 +26,8 @@ class SymbolPollingResult:
     instrument_token: int
 
     status: str
+
+    reason: str = None
 
     cycle_result: object = None
 
@@ -696,6 +695,7 @@ class LiveMultiSymbolPollingEngine:
                     instrument_token
                 ),
                 status=cycle_result.status,
+                reason=cycle_result.reason,
                 cycle_result=cycle_result,
             )
 

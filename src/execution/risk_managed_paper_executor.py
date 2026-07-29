@@ -33,6 +33,8 @@ class PaperExecutionResult:
 
     risk_decision: RiskDecision
 
+    reason: str = None
+
     order: object = None
 
     position: object = None
@@ -160,6 +162,7 @@ class RiskManagedPaperExecutor:
             return PaperExecutionResult(
                 status="REJECTED",
                 risk_decision=risk_decision,
+                reason=risk_decision.reason,
             )
 
         # --------------------------------------------------
@@ -210,6 +213,7 @@ class RiskManagedPaperExecutor:
         return PaperExecutionResult(
             status="EXECUTED",
             risk_decision=risk_decision,
+            reason=risk_decision.reason,
             order=order,
             position=position,
         )
