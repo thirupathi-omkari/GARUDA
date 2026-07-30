@@ -30,6 +30,8 @@ class PaperTradingSessionResult:
 
     strategy_result: StrategyResult
 
+    reason: str = None
+
     execution_result: PaperExecutionResult = None
 
     exit_result: PaperExitResult = None
@@ -310,6 +312,7 @@ class PaperTradingSessionEngine:
             return PaperTradingSessionResult(
                 status="REJECTED",
                 strategy_result=strategy_result,
+                reason=execution_result.reason,
                 execution_result=execution_result,
             )
 
@@ -342,6 +345,7 @@ class PaperTradingSessionEngine:
         return PaperTradingSessionResult(
             status="POSITION_OPEN",
             strategy_result=strategy_result,
+            reason=execution_result.reason,
             execution_result=execution_result,
         )
 

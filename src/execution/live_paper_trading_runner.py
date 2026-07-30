@@ -667,8 +667,11 @@ class LivePaperTradingRunner:
                 status=market_candle_result.status,
                 symbol=normalized_symbol,
                 candle_time=candle_time,
-                market_candle_result=(
-                    market_candle_result
+                market_candle_result=market_candle_result,
+                reason=(
+                    market_candle_result.reason
+                    if hasattr(market_candle_result, "reason")
+                    else None
                 ),
             )
 
@@ -710,6 +713,11 @@ class LivePaperTradingRunner:
                 symbol=normalized_symbol,
                 candle_time=candle_time,
                 strategy_result=strategy_result,
+                reason=(
+                    strategy_result.reason
+                    if hasattr(strategy_result, "reason")
+                    else "Strategy generated no signal."
+                ),
             )
 
         # --------------------------------------------------
@@ -780,6 +788,11 @@ class LivePaperTradingRunner:
                 candle_time=candle_time,
                 strategy_result=strategy_result,
                 session_result=session_result,
+                reason=(
+                    session_result.reason
+                    if hasattr(session_result, "reason")
+                    else "Risk manager rejected the trade."
+                ),
             )
 
         # --------------------------------------------------
@@ -799,6 +812,11 @@ class LivePaperTradingRunner:
                 candle_time=candle_time,
                 strategy_result=strategy_result,
                 session_result=session_result,
+                reason=(
+                    session_result.reason
+                    if hasattr(session_result, "reason")
+                    else "Paper position opened successfully."
+                ),
             )
 
         # --------------------------------------------------
