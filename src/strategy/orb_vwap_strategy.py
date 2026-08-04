@@ -110,11 +110,17 @@ class ORBVWAPStrategy(BaseStrategy):
             buy_breakout
             and buy_vwap_confirmation
         ):
+            risk = latest_close - opening_low
+
+            target = latest_close + (risk * 2)
+
             return StrategyResult(
                 symbol=symbol,
                 strategy_name=self.name,
                 signal="BUY",
                 entry_price=latest_close,
+                stop_loss=opening_low,
+                target_price=target,
                 reason=(
                     "Time-aware ORB breakout "
                     "confirmed above VWAP"
@@ -127,11 +133,17 @@ class ORBVWAPStrategy(BaseStrategy):
             sell_breakdown
             and sell_vwap_confirmation
         ):
+            risk = opening_high - latest_close
+
+            target = latest_close - (risk * 2)
+
             return StrategyResult(
                 symbol=symbol,
                 strategy_name=self.name,
                 signal="SELL",
                 entry_price=latest_close,
+                stop_loss=opening_high,
+                target_price=target,
                 reason=(
                     "Time-aware ORB breakdown "
                     "confirmed below VWAP"

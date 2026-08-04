@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from config.market_session import (PROGRAM_EXIT, AUTO_SQUARE_OFF)
+
 import time
 
 import pandas as pd
@@ -785,9 +787,46 @@ class LiveMultiSymbolPollingEngine:
 
             print()
 
+            # ======================================================
+            # POSITION CLOSED
+            # ======================================================
+
+            if symbol_result.status == "POSITION_CLOSED":
+
+                cycle_result = symbol_result.cycle_result
+
+                if (
+                    cycle_result is not None
+                    and cycle_result.market_candle_result is not None
+                    and cycle_result.market_candle_result.exit_result is not None
+                ):
+
+                    market = cycle_result.market_candle_result
+
+                    exit_result = market.exit_result
+
+                    position = exit_result.position
+
+                    print(f"Exit Reason : {market.exit_reason}")
+                    print(f"Side        : {position.side}")
+                    print(f"Quantity    : {position.quantity}")
+                    print(f"Entry Price : {position.entry_price:.2f}")
+                    print(f"Exit Price  : {exit_result.exit_price:.2f}")
+                    print(f"Realized P&L: {exit_result.realized_pnl:,.2f}")
+                    print(f"Holding     : {str(position.holding_time).split('.')[0]}")
+                    print()
+
+            # ======================================================
+            # POSITION OPEN
+            # ======================================================
+
             if symbol_result.status == "POSITION_OPEN":
 
                 cycle_result = symbol_result.cycle_result
+
+                # --------------------------------------------------
+                # NEWLY OPENED POSITION
+                # --------------------------------------------------
 
                 if (
                     cycle_result is not None
@@ -803,22 +842,45 @@ class LiveMultiSymbolPollingEngine:
                         .position
                     )
 
-                    print(
-                        f"Side        : {position.side}"
+                    exit_levels = (
+                        self.session_engine.get_exit_levels(
+                            position.symbol
+                        )
                     )
 
-                    print(
-                        f"Quantity    : {position.quantity}"
-                    )
+                    print(f"Side        : {position.side}")
+                    print(f"Quantity    : {position.quantity}")
+                    print(f"Entry Price : {position.entry_price:.2f}")
+                    print(f"Current     : {position.current_price:.2f}")
+                    print(f"Stop Loss   : {exit_levels['stop_loss_price']:.2f}")
+                    print(f"Target      : {exit_levels['target_price']:.2f}")
+                    print(f"Live P&L    : {position.unrealized_pnl:,.2f}")
+                    print(f"P&L %       : {position.pnl_percentage:.2f}%")
+                    print(f"Holding     : {str(position.holding_time).split('.')[0]}")
+                    print()
 
-                    print(
-                        f"Entry Price : {position.entry_price:.2f}"
-                    )
+                # --------------------------------------------------
+                # EXISTING OPEN POSITION
+                # --------------------------------------------------
 
-                    print(
-                        f"Current     : {position.current_price:.2f}"
-                    )
+                elif (
+                    cycle_result is not None
+                    and cycle_result.market_candle_result is not None
+                ):
 
+                    market = cycle_result.market_candle_result
+
+                    position = market.position
+
+                    print(f"Side        : {position.side}")
+                    print(f"Quantity    : {position.quantity}")
+                    print(f"Entry Price : {position.entry_price:.2f}")
+                    print(f"Current     : {market.current_price:.2f}")
+                    print(f"Stop Loss   : {market.stop_loss_price:.2f}")
+                    print(f"Target      : {market.target_price:.2f}")
+                    print(f"Live P&L    : {market.unrealized_pnl:,.2f}")
+                    print(f"P&L %       : {market.pnl_percentage:.2f}%")
+                    print(f"Holding     : {str(market.holding_time).split('.')[0]}")
                     print()
 
             if symbol_result.status == "ERROR":
@@ -840,6 +902,59 @@ class LiveMultiSymbolPollingEngine:
             ),
             failed_symbols=failed_symbols,
         )
+
+    def print_end_of_day_summary(
+        self,
+        closed_positions,
+    ):
+        """
+        Print GARUDA End-of-Day summary.
+        """
+
+        print()
+        print("=" * 70)
+        print("GARUDA END OF DAY SUMMARY")
+        print("=" * 70)
+
+        account = self.session_engine.executor.account
+        equity = self.session_engine.executor.equity_curve
+
+        print(
+            f"Initial Capital     : "
+            f"{equity.initial_equity:.2f}"
+        )
+
+        print(
+            f"Closing Capital     : "
+            f"{equity.current_equity:.2f}"
+        )
+
+        print(
+            f"Net P&L             : "
+            f"{equity.net_pnl:.2f}"
+        )
+
+        print(
+            f"Return              : "
+            f"{equity.return_percentage:.2f}%"
+        )
+
+        print(
+            f"Completed Trades    : "
+            f"{equity.trade_count}"
+        )
+
+        print(
+            f"Open Positions      : "
+            f"{self.session_engine.executor.position_manager.position_count}"
+        )
+
+        print(
+            f"Square-Off Trades   : "
+            f"{len(closed_positions)}"
+        )
+
+        print("=" * 70)
 
 
     # ========================================================
@@ -895,6 +1010,71 @@ class LiveMultiSymbolPollingEngine:
             1,
             cycles + 1,
         ):
+            # ----------------------------------------------------
+            # END-OF-DAY EXIT
+            # ----------------------------------------------------
+
+            if datetime.now().time() >= PROGRAM_EXIT:
+
+                print("\n" + "=" * 70)
+                print("GARUDA END OF TRADING SESSION")
+                print("=" * 70)
+
+                if AUTO_SQUARE_OFF:
+
+                    print("Auto Square-Off : Enabled")
+
+                    closed_positions = (
+                        self.session_engine
+                        .square_off_all_positions()
+                    )
+
+                    if not closed_positions:
+
+                        print("No open positions.")
+
+                    else:
+
+                        print()
+
+                        print("Square-Off Summary")
+
+                        print("-" * 60)
+
+                        total_pnl = 0.0
+
+                        for exit_result in closed_positions:
+
+                            total_pnl += exit_result.realized_pnl
+
+                            print(
+                                f"{exit_result.position.symbol:<12}"
+                                f"{exit_result.realized_pnl:>12.2f}"
+                            )
+
+                        print("-" * 60)
+
+                        print(
+                            f"Positions Closed : "
+                            f"{len(closed_positions)}"
+                        )
+
+                        print(
+                            f"Total P&L        : "
+                            f"{total_pnl:.2f}"
+                        )
+
+                    # Print the final report after the square-off summary
+                    self.print_end_of_day_summary(
+                        closed_positions
+                    )
+
+                print("Program Exit Time Reached.")
+                print("Stopping polling.")
+                print("=" * 70)
+
+                break
+
 
             cycle_result = (
                 self.process_polling_cycle(

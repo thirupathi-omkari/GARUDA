@@ -1,5 +1,6 @@
 from execution.paper_order import PaperOrder
 from execution.paper_position import PaperPosition
+from datetime import datetime
 
 
 class PaperPositionManager:
@@ -64,6 +65,7 @@ class PaperPositionManager:
             side=position_side,
             quantity=order.quantity,
             entry_price=order.fill_price,
+            entry_time=datetime.now()
         )
 
         self._positions[

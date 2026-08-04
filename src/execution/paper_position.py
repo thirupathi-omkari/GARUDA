@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 VALID_POSITION_SIDES = {
@@ -28,6 +29,8 @@ class PaperPosition:
 
     current_price: float
 
+    entry_time: datetime
+
 
     @classmethod
     def create(
@@ -36,6 +39,7 @@ class PaperPosition:
         side: str,
         quantity: int,
         entry_price: float,
+        entry_time: datetime = None,
     ):
         """
         Create and validate a new paper position.
@@ -67,12 +71,17 @@ class PaperPosition:
                 "Entry price must be positive."
             )
 
+        if entry_time is None:
+
+            entry_time = datetime.now()
+
         return cls(
             symbol=symbol.upper(),
             side=side,
             quantity=quantity,
             entry_price=entry_price,
             current_price=entry_price,
+            entry_time=entry_time
         )
 
 
@@ -129,3 +138,22 @@ class PaperPosition:
             self.entry_price
             - self.current_price
         ) * self.quantity
+
+    @property
+    def holding_time(self):
+        return datetime.now() - self.entry_time
+
+    @property
+    def pnl_percentage(self):
+
+        if self.side == "LONG":
+
+            return (
+                (self.current_price - self.entry_price)
+                / self.entry_price
+            ) * 100
+
+        return (
+            (self.entry_price - self.current_price)
+            / self.entry_price
+        ) * 100

@@ -18,6 +18,10 @@ from execution.risk_managed_paper_executor import (
     RiskManagedPaperExecutor,
 )
 
+from execution.trade_csv_journal import (
+    TradeCSVJournal,
+)
+
 
 @dataclass
 class PaperTradingSessionResult:
@@ -79,6 +83,10 @@ class PaperMarketCandleResult:
 
     target_price: float
 
+    holding_time: object = None
+
+    pnl_percentage: float = 0.0
+
     exit_reason: str = None
 
     exit_result: PaperExitResult = None
@@ -129,6 +137,8 @@ class PaperTradingSessionEngine:
         self.executor = executor
 
         self._active_exit_levels = {}
+
+        self.trade_journal = TradeCSVJournal()
 
 
     def process_entry(
@@ -483,15 +493,11 @@ class PaperTradingSessionEngine:
                 status="POSITION_OPEN",
                 symbol=position.symbol,
                 position=position,
-                current_price=(
-                    position.current_price
-                ),
-                unrealized_pnl=(
-                    position.unrealized_pnl
-                ),
-                stop_loss_price=(
-                    stop_loss_price
-                ),
+                current_price=position.current_price,
+                unrealized_pnl=position.unrealized_pnl,
+                holding_time=position.holding_time,
+                pnl_percentage=position.pnl_percentage,
+                stop_loss_price=stop_loss_price,
                 target_price=target_price,
             )
 
@@ -501,10 +507,9 @@ class PaperTradingSessionEngine:
 
         exit_result = self.process_exit(
             symbol=normalized_symbol,
-            exit_price=(
-                exit_decision["exit_price"]
-            ),
-        )
+            exit_price=exit_decision["exit_price"],
+            exit_reason=exit_decision["exit_reason"],
+        )   
 
         return PaperMarketCandleResult(
             status="POSITION_CLOSED",
@@ -512,6 +517,8 @@ class PaperTradingSessionEngine:
             position=position,
             current_price=current_price,
             unrealized_pnl=0.0,
+            holding_time=position.holding_time,
+            pnl_percentage=position.pnl_percentage,
             stop_loss_price=stop_loss_price,
             target_price=target_price,
             exit_reason=(
@@ -525,6 +532,7 @@ class PaperTradingSessionEngine:
         self,
         symbol: str,
         exit_price: float,
+        exit_reason: str,
     ):
         """
         Close an open paper position.
@@ -536,11 +544,28 @@ class PaperTradingSessionEngine:
 
         normalized_symbol = symbol.upper()
 
-        exit_result = (
-            self.executor.close_trade(
-                symbol=normalized_symbol,
-                exit_price=exit_price,
-            )
+        exit_result = self.executor.close_trade(
+            symbol=normalized_symbol,
+            exit_price=exit_price,
+        )
+
+        exit_levels = self.get_exit_levels(
+            normalized_symbol
+        )
+
+        position = exit_result.position
+
+        self.trade_journal.record_trade(
+            symbol=position.symbol,
+            side=position.side,
+            quantity=position.quantity,
+            entry_price=position.entry_price,
+            exit_price=exit_result.exit_price,
+            stop_loss=exit_levels["stop_loss_price"],
+            target=exit_levels["target_price"],
+            holding_time=position.holding_time,
+            exit_reason=exit_reason,
+            realized_pnl=exit_result.realized_pnl,
         )
 
         # --------------------------------------------------
@@ -553,6 +578,35 @@ class PaperTradingSessionEngine:
         )
 
         return exit_result
+
+    def square_off_all_positions(
+        self,
+    ):
+        """
+        Close every remaining open paper position
+        at the latest available market price.
+        """
+
+        closed_positions = []
+
+        positions = list(
+            self.executor
+            .position_manager
+            .positions
+        )
+
+        for position in positions:
+
+            exit_result = self.process_exit(
+                symbol=position.symbol,
+                exit_price=position.current_price,
+                exit_reason="MARKET_CLOSE",
+            )
+
+            closed_positions.append(exit_result)
+
+        return closed_positions
+    
 
 
     def get_exit_levels(
@@ -625,6 +679,7 @@ class PaperTradingSessionEngine:
         exit_result = self.process_exit(
             symbol=strategy_result.symbol,
             exit_price=exit_price,
+            exit_reason="MANUAL",
         )
 
         return PaperTradingSessionResult(
