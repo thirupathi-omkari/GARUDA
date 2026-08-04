@@ -39,6 +39,8 @@ class PaperExecutionResult:
 
     position: object = None
 
+    stop_loss_price: float = 0.0
+
 
 @dataclass
 class PaperExitResult:
@@ -163,6 +165,7 @@ class RiskManagedPaperExecutor:
                 status="REJECTED",
                 risk_decision=risk_decision,
                 reason=risk_decision.reason,
+                stop_loss_price=risk_decision.stop_loss_price,
             )
 
         # --------------------------------------------------
@@ -216,6 +219,7 @@ class RiskManagedPaperExecutor:
             reason=risk_decision.reason,
             order=order,
             position=position,
+            stop_loss_price=risk_decision.stop_loss_price,
         )
 
 

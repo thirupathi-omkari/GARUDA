@@ -36,6 +36,8 @@ class PaperTradingSessionResult:
 
     exit_result: PaperExitResult = None
 
+    stop_loss_price: float = 0.0
+
 
 @dataclass
 class PaperPositionUpdateResult:
@@ -168,6 +170,7 @@ class PaperTradingSessionEngine:
             return PaperTradingSessionResult(
                 status="NO_TRADE",
                 strategy_result=strategy_result,
+                stop_loss_price=0.0,
             )
 
         # --------------------------------------------------
@@ -314,6 +317,7 @@ class PaperTradingSessionEngine:
                 strategy_result=strategy_result,
                 reason=execution_result.reason,
                 execution_result=execution_result,
+                stop_loss_price=execution_result.stop_loss_price,
             )
 
         # --------------------------------------------------
@@ -347,6 +351,7 @@ class PaperTradingSessionEngine:
             strategy_result=strategy_result,
             reason=execution_result.reason,
             execution_result=execution_result,
+            stop_loss_price=execution_result.stop_loss_price,
         )
 
 
@@ -629,4 +634,7 @@ class PaperTradingSessionEngine:
                 entry_result.execution_result
             ),
             exit_result=exit_result,
+            stop_loss_price=(
+                entry_result.execution_result.stop_loss_price
+            ),
         )

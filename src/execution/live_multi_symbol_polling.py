@@ -14,8 +14,6 @@ from data.live_market_data import (
 # POLLING SYMBOL RESULT
 # ============================================================
 
-
-@dataclass
 @dataclass
 class SymbolPollingResult:
 
@@ -771,11 +769,57 @@ class LiveMultiSymbolPollingEngine:
                 )
             )
 
+
             symbol_results.append(
                 symbol_result
             )
 
-            print(f"{symbol:<12} Status : {symbol_result.status}")
+            print("-" * 78)
+            print(symbol)
+            print("-" * 78)
+
+            print(f"Status      : {symbol_result.status}")
+
+            if symbol_result.reason:
+                print(f"Reason      : {symbol_result.reason}")
+
+            print()
+
+            if symbol_result.status == "POSITION_OPEN":
+
+                cycle_result = symbol_result.cycle_result
+
+                if (
+                    cycle_result is not None
+                    and cycle_result.session_result is not None
+                    and cycle_result.session_result.execution_result is not None
+                    and cycle_result.session_result.execution_result.position is not None
+                ):
+
+                    position = (
+                        cycle_result
+                        .session_result
+                        .execution_result
+                        .position
+                    )
+
+                    print(
+                        f"Side        : {position.side}"
+                    )
+
+                    print(
+                        f"Quantity    : {position.quantity}"
+                    )
+
+                    print(
+                        f"Entry Price : {position.entry_price:.2f}"
+                    )
+
+                    print(
+                        f"Current     : {position.current_price:.2f}"
+                    )
+
+                    print()
 
             if symbol_result.status == "ERROR":
 

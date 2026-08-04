@@ -50,6 +50,10 @@ class RiskDecision:
 
     proposed_exposure: float = 0.0
 
+    stop_loss_price: float = 0.0
+
+    target_price: float = 0.0
+
 
 class RiskManager:
     """
@@ -227,4 +231,5 @@ class RiskManager:
             raw_position_size=raw_position_size,
             approved_quantity=approved_quantity,
             proposed_exposure=proposed_exposure,
+            stop_loss_price=stop_loss_price,
         )

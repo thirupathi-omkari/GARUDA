@@ -69,6 +69,8 @@ class LivePaperTradingCycleResult:
 
     reason: str = None
 
+    stop_loss_price: float = 0.0
+
 
 class LivePaperTradingRunner:
     """
