@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+import pandas as pd
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -394,6 +396,7 @@ def test_process_exit_realizes_profit():
     result = engine.process_exit(
         symbol="INFY",
         exit_price=510.00,
+        exit_reason="MANUAL_TEST",
     )
 
     assert result.status == "CLOSED"
@@ -433,6 +436,7 @@ def test_process_exit_realizes_loss():
     result = engine.process_exit(
         symbol="INFY",
         exit_price=490.00,
+        exit_reason="MANUAL_TEST"
     )
 
     assert result.realized_pnl == -500.00
@@ -583,3 +587,149 @@ def test_existing_run_session_remains_compatible():
     assert position_manager.position_count == 0
 
     assert equity_curve.trade_count == 1
+
+def test_process_market_candle_position_remains_open():
+
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+    ) = create_session_engine()
+
+    engine.process_entry(
+        strategy_result=create_strategy_result(
+            signal="BUY",
+            symbol="INFY",
+            entry_price=500.00,
+        ),
+        stop_loss_price=480.00,
+        market_price=500.00,
+        lot_size=1,
+        current_exposure=0.00,
+        current_open_risk=0.00,
+        current_open_positions=0,
+        daily_realized_pnl=0.00,
+    )
+
+    dataframe = pd.DataFrame(
+        {
+            "high": [501, 502, 503, 504, 505],
+            "low": [499, 500, 501, 502, 503],
+            "close": [500, 501, 502, 503, 504],
+        }
+    )
+
+    candle = dataframe.iloc[-1]
+
+    result = engine.process_market_candle(
+        symbol="INFY",
+        candle=candle,
+        dataframe=dataframe,
+    )
+
+    assert result.status == "POSITION_OPEN"
+
+    assert result.exit_reason is None
+
+    assert "INFY" in engine._active_exit_levels
+
+    assert (
+        engine._active_exit_levels["INFY"]["stop_loss_price"]
+        >= 480.00
+    )
+
+def test_process_market_candle_closes_on_target():
+
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+    ) = create_session_engine()
+
+    engine.process_entry(
+        strategy_result=create_strategy_result(
+            signal="BUY",
+            symbol="INFY",
+            entry_price=500.00,
+        ),
+        stop_loss_price=480.00,
+        market_price=500.00,
+        lot_size=1,
+        current_exposure=0.00,
+        current_open_risk=0.00,
+        current_open_positions=0,
+        daily_realized_pnl=0.00,
+    )
+
+    dataframe = pd.DataFrame(
+        {
+            "high": [500, 510, 520],
+            "low": [499, 509, 519],
+            "close": [500, 510, 520],
+        }
+    )
+
+    candle = dataframe.iloc[-1]
+
+    result = engine.process_market_candle(
+        symbol="INFY",
+        candle=candle,
+        dataframe=dataframe,
+    )
+
+    assert result.status == "POSITION_CLOSED"
+
+    assert result.exit_reason == "TARGET"
+
+    assert "INFY" not in engine._active_exit_levels
+
+def test_process_market_candle_closes_on_stop_loss():
+
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+    ) = create_session_engine()
+
+    engine.process_entry(
+        strategy_result=create_strategy_result(
+            signal="BUY",
+            symbol="INFY",
+            entry_price=500.00,
+        ),
+        stop_loss_price=480.00,
+        market_price=500.00,
+        lot_size=1,
+        current_exposure=0.00,
+        current_open_risk=0.00,
+        current_open_positions=0,
+        daily_realized_pnl=0.00,
+    )
+
+    dataframe = pd.DataFrame(
+        {
+            "high": [500, 495, 490],
+            "low": [500, 485, 470],
+            "close": [500, 490, 475],
+        }
+    )
+
+    candle = dataframe.iloc[-1]
+
+    result = engine.process_market_candle(
+        symbol="INFY",
+        candle=candle,
+        dataframe=dataframe,
+    )
+
+    assert result.status == "POSITION_CLOSED"
+
+    assert result.exit_reason == "STOP_LOSS"
+
+    assert "INFY" not in engine._active_exit_levels

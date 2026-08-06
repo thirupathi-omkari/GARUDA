@@ -6,6 +6,17 @@ from strategy.session_utils import (
 )
 from indicators.vwap import calculate_vwap
 
+from risk.stop_loss_engine import (
+    calculate_stop_loss,
+)
+
+from risk.target_engine import (
+    calculate_target,
+)
+
+from risk.risk_config import RiskConfig
+
+risk_config = RiskConfig()
 
 class ORBVWAPStrategy(BaseStrategy):
     """Opening Range Breakout with VWAP confirmation."""
@@ -110,16 +121,33 @@ class ORBVWAPStrategy(BaseStrategy):
             buy_breakout
             and buy_vwap_confirmation
         ):
-            risk = latest_close - opening_low
 
-            target = latest_close + (risk * 2)
+            stop_loss = calculate_stop_loss(
+                mode=risk_config.active_stop_loss_mode,
+                signal="BUY",
+                entry_price=latest_close,
+                opening_high=opening_high,
+                opening_low=opening_low,
+                candles=dataframe,
+            )
+
+            target = calculate_target(
+                mode=risk_config.active_target_mode,
+                signal="BUY",
+                entry_price=latest_close,
+                stop_loss=stop_loss,
+                candles=dataframe,
+                risk_reward_ratio=(
+                    risk_config.risk_reward_ratio
+                ),
+            )
 
             return StrategyResult(
                 symbol=symbol,
                 strategy_name=self.name,
                 signal="BUY",
                 entry_price=latest_close,
-                stop_loss=opening_low,
+                stop_loss=stop_loss,
                 target_price=target,
                 reason=(
                     "Time-aware ORB breakout "
@@ -133,16 +161,33 @@ class ORBVWAPStrategy(BaseStrategy):
             sell_breakdown
             and sell_vwap_confirmation
         ):
-            risk = opening_high - latest_close
 
-            target = latest_close - (risk * 2)
+            stop_loss = calculate_stop_loss(
+                mode=risk_config.active_stop_loss_mode,
+                signal="SELL",
+                entry_price=latest_close,
+                opening_high=opening_high,
+                opening_low=opening_low,
+                candles=dataframe,
+            )
+
+            target = calculate_target(
+                mode=risk_config.active_target_mode,
+                signal="SELL",
+                entry_price=latest_close,
+                stop_loss=stop_loss,
+                candles=dataframe,
+                risk_reward_ratio=(
+                    risk_config.risk_reward_ratio
+                ),
+            )
 
             return StrategyResult(
                 symbol=symbol,
                 strategy_name=self.name,
                 signal="SELL",
                 entry_price=latest_close,
-                stop_loss=opening_high,
+                stop_loss=stop_loss,
                 target_price=target,
                 reason=(
                     "Time-aware ORB breakdown "

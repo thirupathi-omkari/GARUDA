@@ -69,8 +69,6 @@ class LivePaperTradingCycleResult:
 
     reason: str = None
 
-    stop_loss_price: float = 0.0
-
 
 class LivePaperTradingRunner:
     """
@@ -653,6 +651,7 @@ class LivePaperTradingRunner:
                 session_engine.process_market_candle(
                     symbol=normalized_symbol,
                     candle=latest_candle,
+                    dataframe=dataframe,
                 )
             )
 
@@ -790,11 +789,7 @@ class LivePaperTradingRunner:
                 candle_time=candle_time,
                 strategy_result=strategy_result,
                 session_result=session_result,
-                reason=(
-                    session_result.reason
-                    if hasattr(session_result, "reason")
-                    else "Risk manager rejected the trade."
-                ),
+                reason=session_result.reason
             )
 
         # --------------------------------------------------
@@ -814,11 +809,7 @@ class LivePaperTradingRunner:
                 candle_time=candle_time,
                 strategy_result=strategy_result,
                 session_result=session_result,
-                reason=(
-                    session_result.reason
-                    if hasattr(session_result, "reason")
-                    else "Paper position opened successfully."
-                ),
+                reason=session_result.reason
             )
 
         # --------------------------------------------------

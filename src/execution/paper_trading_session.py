@@ -22,6 +22,20 @@ from execution.trade_csv_journal import (
     TradeCSVJournal,
 )
 
+from risk.break_even_engine import (
+    calculate_break_even,
+)
+
+from risk.trailing_stop_engine import (
+    calculate_trailing_stop,
+)
+
+from risk.risk_config import (
+    RiskConfig,
+)
+
+risk_config = RiskConfig()
+
 
 @dataclass
 class PaperTradingSessionResult:
@@ -405,6 +419,7 @@ class PaperTradingSessionEngine:
         self,
         symbol: str,
         candle,
+        dataframe,
     ):
         """
         Process a live market candle for
@@ -471,6 +486,58 @@ class PaperTradingSessionEngine:
                 market_price=current_price,
             )
         )
+
+        # --------------------------------------------------
+        # DYNAMIC STOP MANAGEMENT
+        # --------------------------------------------------
+
+        entry_price = (
+            position.entry_price
+        )
+
+        initial_risk = abs(
+            entry_price
+            - stop_loss_price
+        )
+
+        # --------------------------------------------------
+        # BREAK-EVEN MANAGEMENT
+        # --------------------------------------------------
+
+        if risk_config.break_even_enabled:
+
+            stop_loss_price = calculate_break_even(
+                mode=risk_config.active_break_even_mode,
+                signal=direction,
+                entry_price=entry_price,
+                current_stop=stop_loss_price,
+                latest_price=current_price,
+                initial_risk=initial_risk,
+                trigger_multiple=(
+                    risk_config.break_even_trigger_multiple
+                ),
+            )
+
+        # --------------------------------------------------
+        # ATR TRAILING STOP
+        # --------------------------------------------------
+
+        if risk_config.trailing_stop_enabled:
+
+            stop_loss_price = calculate_trailing_stop(
+                mode=risk_config.active_trailing_stop_mode,
+                signal=direction,
+                current_stop=stop_loss_price,
+                candles=dataframe,
+            )
+
+        # --------------------------------------------------
+        # UPDATE ACTIVE STOP LOSS
+        # --------------------------------------------------
+
+        self._active_exit_levels[
+            normalized_symbol
+        ]["stop_loss_price"] = stop_loss_price
 
         # --------------------------------------------------
         # REUSE EXISTING GARUDA EXIT LOGIC
