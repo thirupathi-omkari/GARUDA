@@ -1104,7 +1104,6 @@ class LiveMultiSymbolPollingEngine:
 
             if cycle_number < cycles:
 
-                from datetime import datetime, timedelta
 
                 completed = datetime.now()
                 next_poll = completed + timedelta(
