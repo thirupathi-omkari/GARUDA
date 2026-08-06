@@ -219,16 +219,16 @@ def calculate_remaining_cycles():
 
     now = datetime.now()
 
-    market_close_dt = datetime.combine(
+    program_exit_dt = datetime.combine(
         now.date(),
-        MARKET_CLOSE,
+        PROGRAM_EXIT,
     )
 
-    if now >= market_close_dt:
+    if now >= program_exit_dt:
         return 0
 
     remaining_seconds = (
-        market_close_dt - now
+        program_exit_dt - now
     ).total_seconds()
 
     return max(
