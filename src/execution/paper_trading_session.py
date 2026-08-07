@@ -355,15 +355,27 @@ class PaperTradingSessionEngine:
         self._active_exit_levels[
             normalized_symbol
         ] = {
-            "direction": (
-                strategy_result.signal
+
+            "direction": strategy_result.signal,
+
+            "entry_price": strategy_result.entry_price,
+
+            "stop_loss_price": resolved_stop_loss,
+
+            "target_price": resolved_target,
+
+            "initial_stop_loss": resolved_stop_loss,
+
+            "initial_risk": abs(
+                strategy_result.entry_price
+                - resolved_stop_loss
             ),
-            "stop_loss_price": (
-                resolved_stop_loss
-            ),
-            "target_price": (
-                resolved_target
-            ),
+
+            "trade_state": "INITIAL",
+
+            "break_even_done": False,
+
+            "trailing_active": False,
         }
 
         # --------------------------------------------------
@@ -492,19 +504,57 @@ class PaperTradingSessionEngine:
         # --------------------------------------------------
 
         entry_price = (
-            position.entry_price
+            exit_levels["entry_price"]
         )
 
-        initial_risk = abs(
-            entry_price
-            - stop_loss_price
+        # NOTE:
+        # This will be improved later by storing
+        # initial_risk at entry time.
+        # For now we'll keep the existing calculation.
+
+        initial_risk = (
+            exit_levels["initial_risk"]
+        )
+
+        if initial_risk <= 0:
+
+            raise ValueError(
+                "Initial risk must be greater than zero."
+            )
+
+        # --------------------------------------------------
+        # CURRENT PROFIT
+        # --------------------------------------------------
+
+        if direction == "BUY":
+
+            current_profit = (
+                current_price
+                - entry_price
+            )
+
+        else:
+
+            current_profit = (
+                entry_price
+                - current_price
+            )
+
+        current_r_multiple = (
+            current_profit
+            / initial_risk
         )
 
         # --------------------------------------------------
         # BREAK-EVEN MANAGEMENT
         # --------------------------------------------------
 
-        if risk_config.break_even_enabled:
+        if (
+            risk_config.break_even_enabled
+            and not exit_levels["break_even_done"]
+            and current_r_multiple >=
+            risk_config.break_even_trigger_multiple
+        ):
 
             stop_loss_price = calculate_break_even(
                 mode=risk_config.active_break_even_mode,
@@ -518,11 +568,33 @@ class PaperTradingSessionEngine:
                 ),
             )
 
+            exit_levels["stop_loss_price"] = (
+                stop_loss_price
+            )
+
+            exit_levels["break_even_done"] = True
+
+            exit_levels["trade_state"] = (
+                "BREAK_EVEN"
+            )
+
         # --------------------------------------------------
         # ATR TRAILING STOP
         # --------------------------------------------------
 
-        if risk_config.trailing_stop_enabled:
+        if (
+            risk_config.trailing_stop_enabled
+            and current_r_multiple >=
+            risk_config.trailing_activation_multiple
+        ):
+
+            if not exit_levels["trailing_active"]:
+
+                exit_levels["trailing_active"] = True
+
+                exit_levels["trade_state"] = (
+                    "TRAILING"
+                )
 
             stop_loss_price = calculate_trailing_stop(
                 mode=risk_config.active_trailing_stop_mode,
@@ -530,6 +602,8 @@ class PaperTradingSessionEngine:
                 current_stop=stop_loss_price,
                 candles=dataframe,
             )
+
+            exit_levels["stop_loss_price"] = stop_loss_price
 
         # --------------------------------------------------
         # UPDATE ACTIVE STOP LOSS

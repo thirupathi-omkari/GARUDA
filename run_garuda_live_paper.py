@@ -221,7 +221,7 @@ def calculate_remaining_cycles():
 
     program_exit_dt = datetime.combine(
         now.date(),
-        PROGRAM_EXIT,
+        MARKET_CLOSE,
     )
 
     if now >= program_exit_dt:

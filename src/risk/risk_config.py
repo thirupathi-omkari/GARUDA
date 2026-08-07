@@ -54,6 +54,8 @@ class RiskConfig:
 
     trailing_stop_enabled: bool = True
 
+    trailing_activation_multiple: float = 2.0
+
     # --------------------------------------------------
     # Break-even Configuration
     # --------------------------------------------------
