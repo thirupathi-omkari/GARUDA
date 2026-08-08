@@ -77,13 +77,15 @@ from strategy.orb_vwap_strategy import ORBVWAPStrategy
 
 SYMBOLS = [
     "INFY",
-    "TCS",
     "RELIANCE",
-    "HDFCBANK",
     "ICICIBANK",
+    "TMPV",
+    "ASHOKLEY",
+    "OLAELEC",
+    "SUZLON",
 ]
 
-INITIAL_CAPITAL = 100000.0
+INITIAL_CAPITAL = 200000.0
 
 INTERVAL = "5minute"
 
