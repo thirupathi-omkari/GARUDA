@@ -6,9 +6,6 @@ from backtesting.entry_simulator import (
     simulate_entry,
 )
 
-from backtesting.exit_rules import (
-    calculate_exit_levels,
-)
 
 from backtesting.exit_simulator import (
     simulate_trade_exit,
@@ -107,12 +104,18 @@ def run_session_backtest(
         # Calculate stop-loss and target
         # from the actual simulated entry price.
 
-        exit_levels = calculate_exit_levels(
-            direction=trade.direction,
-            entry_price=trade.entry_price,
-            stop_loss_pct=stop_loss_pct,
-            target_pct=target_pct,
-        )
+        # Use the dynamic stop-loss and target
+        # already calculated by the strategy
+        # and carried by BacktestTrade.
+
+        stop_loss = trade.current_stop_loss
+        target = trade.target_price
+
+        if (
+            stop_loss is None
+            or target is None
+        ):
+            return None
 
         # The entry candle is included because entry
         # occurs at its open.
@@ -124,12 +127,8 @@ def run_session_backtest(
         trade = simulate_trade_exit(
             trade=trade,
             future_candles=future_candles,
-            stop_loss=exit_levels[
-                "stop_loss"
-            ],
-            target=exit_levels[
-                "target"
-            ],
+            stop_loss=stop_loss,
+            target=target,
         )
 
         if trade.exit_price is None:

@@ -35,6 +35,17 @@ def simulate_entry(
         direction=result.signal,
         entry_time=entry_time,
         entry_price=entry_price,
+        initial_stop_loss=result.stop_loss,
+        current_stop_loss=result.stop_loss,
+        target_price=result.target_price,
+        initial_risk=(
+            abs(
+                entry_price
+                - result.stop_loss
+            )
+            if result.stop_loss is not None
+            else None
+        ),
         quantity=1,
     )
 

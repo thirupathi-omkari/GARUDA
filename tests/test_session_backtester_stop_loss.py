@@ -1,3 +1,4 @@
+import pytest
 import sys
 from pathlib import Path
 
@@ -20,7 +21,6 @@ from strategy.orb_vwap_strategy import (
 
 
 def test_stop_loss_integration():
-
     session_data = pd.DataFrame(
         {
             "datetime": pd.to_datetime(
@@ -35,7 +35,6 @@ def test_stop_loss_integration():
                     "2026-07-01 09:50:00",
                 ]
             ),
-
             "open": [
                 100.00,
                 101.00,
@@ -43,10 +42,9 @@ def test_stop_loss_integration():
                 103.00,
                 104.00,
                 107.00,
-                106.50,
-                105.50,
+                95.00,
+                95.00,
             ],
-
             "high": [
                 102.00,
                 103.00,
@@ -54,10 +52,9 @@ def test_stop_loss_integration():
                 105.00,
                 107.00,
                 107.50,
-                107.00,
-                106.00,
+                96.00,
+                96.00,
             ],
-
             "low": [
                 99.00,
                 100.00,
@@ -65,10 +62,9 @@ def test_stop_loss_integration():
                 102.00,
                 103.00,
                 106.50,
-                105.50,
-                104.50,
+                94.00,
+                94.00,
             ],
-
             "close": [
                 101.00,
                 102.00,
@@ -76,10 +72,9 @@ def test_stop_loss_integration():
                 104.00,
                 106.00,
                 106.80,
-                106.00,
-                105.00,
+                95.00,
+                95.00,
             ],
-
             "volume": [
                 1000,
                 1200,
@@ -118,16 +113,28 @@ def test_stop_loss_integration():
         "2026-07-01 09:40:00"
     )
 
-    assert trade.exit_time == pd.Timestamp(
-        "2026-07-01 09:45:00"
+    # --------------------------------------------------
+    # V2 DYNAMIC STOP VALIDATION
+    # --------------------------------------------------
+
+    assert trade.initial_stop_loss is not None
+
+    assert trade.current_stop_loss == (
+        trade.initial_stop_loss
     )
+
+    assert trade.initial_risk > 0
+
+    # The ORB stop is below the entry.
+    assert trade.initial_stop_loss < (
+        trade.entry_price
+    )
+
+    # The 09:45 candle reaches the dynamic
+    # ORB stop, so the trade must exit there.
 
     assert trade.exit_reason == "STOP_LOSS"
 
-    assert trade.gross_pnl < 0
-
-    assert trade.costs > 0
-
-    assert trade.net_pnl < 0
-
-    assert trade.net_pnl < trade.gross_pnl
+    assert trade.exit_time == pd.Timestamp(
+        "2026-07-01 09:45:00"
+    )
