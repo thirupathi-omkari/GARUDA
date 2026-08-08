@@ -1,3 +1,5 @@
+import pandas as pd
+
 from backtesting.trade_lifecycle import (
     evaluate_trade_candle,
 )
@@ -7,6 +9,10 @@ from risk.break_even_engine import (
 )
 
 from risk.risk_config import RiskConfig
+
+from risk.trailing_stop_engine import (
+    calculate_trailing_stop,
+)
 
 
 risk_config = RiskConfig()
@@ -32,9 +38,6 @@ def simulate_trade_exit(
 
     current_stop = stop_loss
 
-    # Keep BacktestTrade synchronized with
-    # the active stop used by the simulator.
-
     trade.current_stop_loss = current_stop
 
     # --------------------------------------------------
@@ -47,11 +50,13 @@ def simulate_trade_exit(
     # CANDLE-BY-CANDLE EXIT SIMULATION
     # --------------------------------------------------
 
-    for _, candle in future_candles.iterrows():
+    for candle_index, (_, candle) in enumerate(
+        future_candles.iterrows()
+    ):
 
         # --------------------------------------------------
         # STEP 1
-        # Evaluate the candle against the CURRENT
+        # Check the candle against the CURRENT
         # stop-loss and target.
         #
         # These levels existed BEFORE this candle.
@@ -64,16 +69,11 @@ def simulate_trade_exit(
             target=target,
         )
 
-        # --------------------------------------------------
-        # STEP 2
-        # EXIT IF STOP OR TARGET WAS HIT
-        # --------------------------------------------------
-
         if exit_result is not None:
 
-            trade.exit_time = candle[
-                "datetime"
-            ]
+            trade.exit_time = (
+                candle["datetime"]
+            )
 
             trade.exit_price = (
                 exit_result["exit_price"]
@@ -86,12 +86,11 @@ def simulate_trade_exit(
             return trade
 
         # --------------------------------------------------
-        # STEP 3
-        # BREAK-EVEN MANAGEMENT
+        # STEP 2
+        # BREAK-EVEN
         #
-        # Only execute after the candle survives.
-        #
-        # The new stop applies to the NEXT candle.
+        # Update only after the current candle
+        # has survived the exit check.
         # --------------------------------------------------
 
         if (
@@ -100,23 +99,73 @@ def simulate_trade_exit(
             and initial_risk > 0
         ):
 
-            latest_price = candle["close"]
-
             current_stop = calculate_break_even(
-                mode=risk_config.active_break_even_mode,
+                mode=(
+                    risk_config
+                    .active_break_even_mode
+                ),
                 signal=trade.direction,
                 entry_price=trade.entry_price,
                 current_stop=current_stop,
-                latest_price=latest_price,
+                latest_price=candle["close"],
                 initial_risk=initial_risk,
                 trigger_multiple=(
-                    risk_config.break_even_trigger_multiple
+                    risk_config
+                    .break_even_trigger_multiple
                 ),
             )
 
             trade.current_stop_loss = (
                 current_stop
             )
+
+        # --------------------------------------------------
+        # STEP 3
+        # ATR TRAILING STOP
+        #
+        # Build historical candles visible up
+        # to and including the current candle.
+        #
+        # The updated trailing stop applies only
+        # to the NEXT candle.
+        # --------------------------------------------------
+
+        if (
+            risk_config.trailing_stop_enabled
+        ):
+
+            visible_candles = (
+                future_candles
+                .iloc[
+                    : candle_index + 1
+                ]
+                .copy()
+            )
+
+            new_stop = calculate_trailing_stop(
+                mode=(
+                    risk_config
+                    .active_trailing_stop_mode
+                ),
+                signal=trade.direction,
+                current_stop=current_stop,
+                candles=visible_candles,
+            )
+
+            # --------------------------------------------------
+            # Protect against insufficient ATR history.
+            # --------------------------------------------------
+
+            if (
+                new_stop is not None
+                and pd.notna(new_stop)
+            ):
+
+                current_stop = new_stop
+
+                trade.current_stop_loss = (
+                    current_stop
+                )
 
     # --------------------------------------------------
     # END OF DAY
