@@ -15,12 +15,22 @@ from datetime import datetime, time
 from pathlib import Path
 
 
+
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "src"
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from config.market_session import (
+    MARKET_OPEN,
+    ENTRY_CUTOFF,
+    BROKER_SQUARE_OFF,
+    MARKET_CLOSE,
+    PROGRAM_EXIT,
+    AUTO_SQUARE_OFF,
+)
 
 from broker.session_manager import create_authenticated_session
 
@@ -214,21 +224,21 @@ from math import ceil
 def calculate_remaining_cycles():
     """
     Calculate the number of polling cycles remaining
-    until market close.
+    until broker square-off time.
     """
 
     now = datetime.now()
 
-    program_exit_dt = datetime.combine(
+    square_off_dt = datetime.combine(
         now.date(),
-        MARKET_CLOSE,
+        BROKER_SQUARE_OFF,
     )
 
-    if now >= program_exit_dt:
+    if now >= square_off_dt:
         return 0
 
     remaining_seconds = (
-        program_exit_dt - now
+        square_off_dt - now
     ).total_seconds()
 
     return max(
@@ -291,6 +301,8 @@ def print_final_report(
     result,
     registered_symbols,
     failed_symbols,
+    account,
+    position_manager,
 ):
 
     print()
@@ -351,7 +363,7 @@ def print_final_report(
 
     print(
         f"Open Positions       : "
-        f"{result.runner_summary['open_positions']}"
+        f"{position_manager.position_count}"
     )
 
     print()
@@ -363,12 +375,22 @@ def print_final_report(
 
     print(
         f"Current Capital      : "
-        f"{result.current_capital:.2f}"
+        f"{account.current_capital:.2f}"
+    )
+
+    net_realized_pnl = (
+        account.current_capital
+        - account.initial_capital
     )
 
     print(
         f"Net Realized P&L     : "
-        f"{result.net_realized_pnl:.2f}"
+        f"{net_realized_pnl:.2f}"
+    )
+
+    print(
+        f"Net Realized P&L     : "
+        f"{account.realized_pnl:.2f}"
     )
 
     print()
@@ -502,11 +524,32 @@ def main():
     print("=" * 70)
     print("GARUDA SESSION PLAN")
     print("=" * 70)
-    print(f"Remaining Cycles : {remaining_cycles}")
+
     print(
-        f"Estimated Runtime: "
+        f"Broker Square-Off : "
+        f"{BROKER_SQUARE_OFF.strftime('%H:%M')}"
+    )
+
+    print(
+        f"Market Close      : "
+        f"{MARKET_CLOSE.strftime('%H:%M')}"
+    )
+
+    print(
+        f"Program Exit      : "
+        f"{PROGRAM_EXIT.strftime('%H:%M')}"
+    )
+
+    print(
+        f"Remaining Cycles  : "
+        f"{remaining_cycles}"
+    )
+
+    print(
+        f"Estimated Runtime : "
         f"{remaining_cycles * POLL_INTERVAL_SECONDS / 3600:.2f} Hours"
     )
+
     print("=" * 70)
     print()
 
@@ -514,10 +557,60 @@ def main():
         cycles=remaining_cycles
     )
 
+    # --------------------------------------------------
+    # END-OF-DAY PAPER SETTLEMENT
+    # --------------------------------------------------
+
+    session_engine = (
+        components["session_engine"]
+    )
+
+    if (
+        AUTO_SQUARE_OFF
+        and session_engine
+        .executor
+        .position_manager
+        .position_count > 0
+    ):
+
+        print()
+        print("=" * 70)
+        print("GARUDA END-OF-DAY SQUARE OFF")
+        print("=" * 70)
+
+        closed_positions = (
+            session_engine
+            .square_off_all_positions()
+        )
+
+        result.runner_summary["closed_trades"] += (
+            len(closed_positions)
+        )
+
+        result.runner_summary["open_positions"] = (
+            session_engine
+            .executor
+            .position_manager
+            .position_count
+        )
+
+        print(
+            f"Positions Closed : "
+            f"{len(closed_positions)}"
+        )
+
+        print("=" * 70)
+
     print_final_report(
         result=result,
         registered_symbols=registered_symbols,
         failed_symbols=failed_symbols,
+        account=components["account"],
+        position_manager=(
+            components["session_engine"]
+            .executor
+            .position_manager
+        ),
     )
 
 

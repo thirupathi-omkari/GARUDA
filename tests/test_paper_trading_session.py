@@ -733,3 +733,136 @@ def test_process_market_candle_closes_on_stop_loss():
     assert result.exit_reason == "STOP_LOSS"
 
     assert "INFY" not in engine._active_exit_levels
+
+def test_square_off_all_positions_at_market_close():
+
+    (
+        engine,
+        account,
+        _,
+        position_manager,
+        equity_curve,
+    ) = create_session_engine()
+
+    # ----------------------------------------------
+    # OPEN BUY POSITION
+    # ----------------------------------------------
+
+    engine.process_entry(
+        strategy_result=create_strategy_result(
+            signal="BUY",
+            symbol="INFY",
+            entry_price=500.00,
+        ),
+        stop_loss_price=480.00,
+        market_price=500.00,
+        lot_size=1,
+        current_exposure=0.00,
+        current_open_risk=0.00,
+        current_open_positions=0,
+        daily_realized_pnl=0.00,
+    )
+
+    # ----------------------------------------------
+    # OPEN SELL POSITION
+    # ----------------------------------------------
+
+    engine.process_entry(
+        strategy_result=create_strategy_result(
+            signal="SELL",
+            symbol="TCS",
+            entry_price=1000.00,
+        ),
+        stop_loss_price=1020.00,
+        market_price=1000.00,
+        lot_size=1,
+        current_exposure=0.00,
+        current_open_risk=0.00,
+        current_open_positions=0,
+        daily_realized_pnl=0.00,
+    )
+
+    # ----------------------------------------------
+    # UPDATE FINAL MARKET PRICES
+    # ----------------------------------------------
+
+    position_manager.update_market_price(
+        symbol="INFY",
+        market_price=510.00,
+    )
+
+    position_manager.update_market_price(
+        symbol="TCS",
+        market_price=990.00,
+    )
+
+    # ----------------------------------------------
+    # MARKET CLOSE SQUARE-OFF
+    # ----------------------------------------------
+
+    infy_position = position_manager.get_position(
+        symbol="INFY"
+    )
+
+    tcs_position = position_manager.get_position(
+        symbol="TCS"
+    )
+
+    expected_pnl = (
+        (510.00 - 500.00)
+        * infy_position.quantity
+    )
+
+    expected_pnl += (
+        (1000.00 - 990.00)
+        * tcs_position.quantity
+    )
+
+    closed_positions = (
+        engine.square_off_all_positions()
+    )
+
+    assert account.current_capital == 101000.00
+    # ----------------------------------------------
+    # VERIFY EXITS
+    # ----------------------------------------------
+
+    assert len(closed_positions) == 2
+
+    assert all(
+        result.status == "CLOSED"
+        for result in closed_positions
+    )
+
+   
+    # ----------------------------------------------
+    # VERIFY NO OPEN POSITIONS
+    # ----------------------------------------------
+
+    assert (
+        position_manager.position_count == 0
+    )
+
+    # ----------------------------------------------
+    # VERIFY REALIZED P&L
+    # ----------------------------------------------
+
+    # INFY BUY:
+    # 510 - 500 = +10
+    #
+    # TCS SELL:
+    # 1000 - 990 = +10
+    #
+    # Total = +20
+
+    assert account.current_capital == (
+        100000.00 + expected_pnl
+    )
+
+    # ----------------------------------------------
+    # VERIFY EQUITY CURVE
+    # ----------------------------------------------
+
+    assert equity_curve.trade_count == 2
+
+    assert equity_curve.net_pnl == 1000.00
