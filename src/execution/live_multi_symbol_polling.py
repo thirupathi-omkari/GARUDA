@@ -441,7 +441,7 @@ class LiveMultiSymbolPollingEngine:
         from the configured lookback period.
         """
 
-        to_date = datetime.now()
+        to_date = self.current_time_provider()
 
         from_date = (
             to_date

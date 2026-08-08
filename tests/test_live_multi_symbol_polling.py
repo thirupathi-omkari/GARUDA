@@ -1564,3 +1564,283 @@ def test_stale_market_data_does_not_create_order():
         account.current_capital
         == account.initial_capital
     )
+
+# ============================================================
+# PHASE 16 ACCEPTANCE TESTS
+# ============================================================
+
+
+def test_multi_symbol_portfolio_state_propagates_between_symbols():
+
+    processed_portfolio_states = []
+
+    class TrackingBuyStrategy:
+
+        def evaluate(
+            self,
+            symbol,
+            dataframe,
+        ):
+
+            return StrategyResult(
+                symbol=symbol,
+                strategy_name="TEST_TRACKING_BUY",
+                signal="BUY",
+                entry_price=(
+                    dataframe.iloc[-1]["close"]
+                ),
+                reason="Test portfolio propagation.",
+            )
+
+    runner = create_runner(
+        symbols={
+            "INFY": 408065,
+            "TCS": 2953217,
+        }
+    )
+
+    (
+        engine,
+        session_engine,
+        _,
+        _,
+        position_manager,
+    ) = create_polling_engine(
+        runner=runner,
+        strategy=TrackingBuyStrategy(),
+    )
+
+    original_process_symbol_cycle = (
+        engine.runner.process_symbol_cycle
+    )
+
+    def tracking_process_symbol_cycle(
+        *args,
+        **kwargs,
+    ):
+
+        processed_portfolio_states.append(
+            {
+                "current_exposure": (
+                    kwargs["current_exposure"]
+                ),
+                "current_open_risk": (
+                    kwargs["current_open_risk"]
+                ),
+                "current_open_positions": (
+                    kwargs[
+                        "current_open_positions"
+                    ]
+                ),
+            }
+        )
+
+        return original_process_symbol_cycle(
+            *args,
+            **kwargs,
+        )
+
+    engine.runner.process_symbol_cycle = (
+        tracking_process_symbol_cycle
+    )
+
+    result = engine.run(
+        cycles=1
+    )
+
+    assert result.completed_cycles == 1
+
+    assert (
+        len(processed_portfolio_states)
+        == 2
+    )
+
+    # First symbol sees an empty portfolio.
+    assert (
+        processed_portfolio_states[0][
+            "current_open_positions"
+        ]
+        == 0
+    )
+
+    # First symbol opens a position.
+    assert (
+        position_manager.position_count
+        == 1
+    )
+
+    # Second symbol must see the first
+    # symbol's position before evaluation.
+    assert (
+        processed_portfolio_states[1][
+            "current_open_positions"
+        ]
+        == 1
+    )
+
+    assert (
+        processed_portfolio_states[1][
+            "current_exposure"
+        ]
+        > 0.0
+    )
+
+    assert (
+        processed_portfolio_states[1][
+            "current_open_risk"
+        ]
+        > 0.0
+    )
+
+
+def test_market_data_fetcher_uses_injected_current_time():
+
+    captured_arguments = {}
+
+    def tracking_fetcher(
+        kite,
+        instrument_token,
+        from_date,
+        to_date,
+        interval,
+    ):
+
+        captured_arguments[
+            "from_date"
+        ] = from_date
+
+        captured_arguments[
+            "to_date"
+        ] = to_date
+
+        return create_market_data(
+            candle_time="2026-07-14 10:25:00"
+        )
+
+    fixed_time = pd.Timestamp(
+        "2026-07-14 10:30:00"
+    )
+
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+    ) = create_polling_engine(
+        market_data_fetcher=tracking_fetcher,
+        current_time_provider=lambda: fixed_time,
+    )
+
+    engine.run(
+        cycles=1
+    )
+
+    assert (
+        captured_arguments["to_date"]
+        == fixed_time.to_pydatetime()
+    )
+
+    assert (
+        captured_arguments["from_date"]
+        == (
+            fixed_time
+            - pd.Timedelta(days=5)
+        ).to_pydatetime()
+    )
+
+
+def test_multi_symbol_market_data_failure_is_isolated():
+
+    runner = create_runner(
+        symbols={
+            "INFY": 408065,
+            "TCS": 2953217,
+            "RELIANCE": 738561,
+        }
+    )
+
+    call_count = 0
+
+    def mixed_market_data_fetcher(
+        kite,
+        instrument_token,
+        from_date,
+        to_date,
+        interval,
+    ):
+
+        nonlocal call_count
+
+        call_count += 1
+
+        if instrument_token == 408065:
+
+            raise RuntimeError(
+                "INFY market-data failure."
+            )
+
+        return create_market_data()
+
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+    ) = create_polling_engine(
+        runner=runner,
+        market_data_fetcher=(
+            mixed_market_data_fetcher
+        ),
+    )
+
+    result = engine.run(
+        cycles=1
+    )
+
+    cycle_result = (
+        result.cycle_results[0]
+    )
+
+    assert call_count == 3
+
+    assert (
+        cycle_result.processed_symbols
+        == 3
+    )
+
+    assert (
+        cycle_result.failed_symbols
+        == 1
+    )
+
+    assert (
+        cycle_result.successful_symbols
+        == 2
+    )
+
+    results_by_symbol = {
+        item.symbol: item
+        for item in cycle_result.symbol_results
+    }
+
+    assert (
+        results_by_symbol["INFY"].status
+        == "ERROR"
+    )
+
+    assert (
+        results_by_symbol["INFY"].error_message
+        == "INFY market-data failure."
+    )
+
+    assert (
+        results_by_symbol["TCS"].status
+        != "ERROR"
+    )
+
+    assert (
+        results_by_symbol["RELIANCE"].status
+        != "ERROR"
+    )
