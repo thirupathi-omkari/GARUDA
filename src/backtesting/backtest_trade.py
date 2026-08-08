@@ -15,6 +15,11 @@ class BacktestTrade:
     entry_time: datetime
     entry_price: float
 
+    initial_stop_loss: Optional[float] = None
+    current_stop_loss: Optional[float] = None
+    target_price: Optional[float] = None
+    initial_risk: Optional[float] = None
+
     exit_time: Optional[datetime] = None
     exit_price: Optional[float] = None
     exit_reason: Optional[str] = None

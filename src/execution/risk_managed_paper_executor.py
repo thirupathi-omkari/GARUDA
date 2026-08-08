@@ -115,6 +115,15 @@ class RiskManagedPaperExecutor:
 
         self.equity_curve = equity_curve
 
+    @property
+    def account(self):
+        """
+        Expose the authoritative TradingAccount
+        managed by RiskManager.
+        """
+
+        return self.risk_manager.account
+
 
     def execute_trade(
         self,

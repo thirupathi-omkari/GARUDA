@@ -431,20 +431,19 @@ class PaperTradingSessionEngine:
         self,
         symbol: str,
         candle,
-        dataframe,
+        dataframe=None,
     ):
         """
         Process a live market candle for
         an open paper position.
 
-        Reuses GARUDA Module 7's existing
-        evaluate_trade_candle() logic.
+        The candle is first evaluated against
+        the stop-loss and target that were active
+        before this candle.
 
-        Candle must provide:
-
-        high
-        low
-        close
+        If the position remains open, break-even
+        and trailing-stop management are applied
+        for subsequent candles.
         """
 
         normalized_symbol = symbol.upper()
@@ -500,17 +499,58 @@ class PaperTradingSessionEngine:
         )
 
         # --------------------------------------------------
-        # DYNAMIC STOP MANAGEMENT
+        # FIRST: EVALUATE CURRENT CANDLE
+        # USING THE EXISTING SL / TARGET
+        # --------------------------------------------------
+
+        exit_decision = evaluate_trade_candle(
+            direction=direction,
+            candle=candle,
+            stop_loss=stop_loss_price,
+            target=target_price,
+        )
+
+        # --------------------------------------------------
+        # AUTOMATIC PAPER EXIT
+        # --------------------------------------------------
+
+        if exit_decision is not None:
+
+            exit_result = self.process_exit(
+                symbol=normalized_symbol,
+                exit_price=(
+                    exit_decision["exit_price"]
+                ),
+                exit_reason=(
+                    exit_decision["exit_reason"]
+                ),
+            )
+
+            return PaperMarketCandleResult(
+                status="POSITION_CLOSED",
+                symbol=position.symbol,
+                position=position,
+                current_price=current_price,
+                unrealized_pnl=0.0,
+                holding_time=position.holding_time,
+                pnl_percentage=position.pnl_percentage,
+                stop_loss_price=stop_loss_price,
+                target_price=target_price,
+                exit_reason=(
+                    exit_decision["exit_reason"]
+                ),
+                exit_result=exit_result,
+            )
+
+        # --------------------------------------------------
+        # POSITION DID NOT EXIT
+        # NOW MANAGE BREAK-EVEN / TRAILING
+        # FOR THE NEXT CANDLE
         # --------------------------------------------------
 
         entry_price = (
             exit_levels["entry_price"]
         )
-
-        # NOTE:
-        # This will be improved later by storing
-        # initial_risk at entry time.
-        # For now we'll keep the existing calculation.
 
         initial_risk = (
             exit_levels["initial_risk"]
@@ -552,8 +592,8 @@ class PaperTradingSessionEngine:
         if (
             risk_config.break_even_enabled
             and not exit_levels["break_even_done"]
-            and current_r_multiple >=
-            risk_config.break_even_trigger_multiple
+            and current_r_multiple
+            >= risk_config.break_even_trigger_multiple
         ):
 
             stop_loss_price = calculate_break_even(
@@ -583,9 +623,10 @@ class PaperTradingSessionEngine:
         # --------------------------------------------------
 
         if (
-            risk_config.trailing_stop_enabled
-            and current_r_multiple >=
-            risk_config.trailing_activation_multiple
+            dataframe is not None
+            and risk_config.trailing_stop_enabled
+            and current_r_multiple
+            >= risk_config.trailing_activation_multiple
         ):
 
             if not exit_levels["trailing_active"]:
@@ -603,69 +644,34 @@ class PaperTradingSessionEngine:
                 candles=dataframe,
             )
 
-            exit_levels["stop_loss_price"] = stop_loss_price
+            exit_levels["stop_loss_price"] = (
+                stop_loss_price
+            )
 
         # --------------------------------------------------
-        # UPDATE ACTIVE STOP LOSS
+        # SAVE UPDATED STOP FOR NEXT CANDLE
         # --------------------------------------------------
 
         self._active_exit_levels[
             normalized_symbol
-        ]["stop_loss_price"] = stop_loss_price
-
-        # --------------------------------------------------
-        # REUSE EXISTING GARUDA EXIT LOGIC
-        # --------------------------------------------------
-
-        exit_decision = evaluate_trade_candle(
-            direction=direction,
-            candle=candle,
-            stop_loss=stop_loss_price,
-            target=target_price,
+        ]["stop_loss_price"] = (
+            stop_loss_price
         )
 
         # --------------------------------------------------
         # POSITION REMAINS OPEN
         # --------------------------------------------------
 
-        if exit_decision is None:
-
-            return PaperMarketCandleResult(
-                status="POSITION_OPEN",
-                symbol=position.symbol,
-                position=position,
-                current_price=position.current_price,
-                unrealized_pnl=position.unrealized_pnl,
-                holding_time=position.holding_time,
-                pnl_percentage=position.pnl_percentage,
-                stop_loss_price=stop_loss_price,
-                target_price=target_price,
-            )
-
-        # --------------------------------------------------
-        # AUTOMATIC PAPER EXIT
-        # --------------------------------------------------
-
-        exit_result = self.process_exit(
-            symbol=normalized_symbol,
-            exit_price=exit_decision["exit_price"],
-            exit_reason=exit_decision["exit_reason"],
-        )   
-
         return PaperMarketCandleResult(
-            status="POSITION_CLOSED",
+            status="POSITION_OPEN",
             symbol=position.symbol,
             position=position,
-            current_price=current_price,
-            unrealized_pnl=0.0,
+            current_price=position.current_price,
+            unrealized_pnl=position.unrealized_pnl,
             holding_time=position.holding_time,
             pnl_percentage=position.pnl_percentage,
             stop_loss_price=stop_loss_price,
             target_price=target_price,
-            exit_reason=(
-                exit_decision["exit_reason"]
-            ),
-            exit_result=exit_result,
         )
 
 

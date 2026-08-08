@@ -1014,7 +1014,11 @@ class LiveMultiSymbolPollingEngine:
             # END-OF-DAY EXIT
             # ----------------------------------------------------
 
-            if datetime.now().time() >= PROGRAM_EXIT:
+            current_time = pd.Timestamp(
+                self.current_time_provider()
+            )
+
+            if current_time.time() >= PROGRAM_EXIT:
 
                 print("\n" + "=" * 70)
                 print("GARUDA END OF TRADING SESSION")
