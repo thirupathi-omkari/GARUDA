@@ -74,6 +74,45 @@ class PaperPositionManager:
 
         return position
 
+    def restore_position(
+        self,
+        symbol: str,
+        side: str,
+        quantity: int,
+        entry_price: float,
+        current_price: float,
+        entry_time: datetime,
+    ):
+        """
+        Restore an open paper position from
+        persistent paper-trading state.
+        """
+
+        normalized_symbol = symbol.upper()
+
+        if normalized_symbol in self._positions:
+
+            raise ValueError(
+                "Position already exists for symbol."
+            )
+
+        position = PaperPosition.create(
+            symbol=normalized_symbol,
+            side=side,
+            quantity=quantity,
+            entry_price=entry_price,
+            entry_time=entry_time,
+        )
+
+        position.update_market_price(
+            market_price=current_price
+        )
+
+        self._positions[
+            normalized_symbol
+        ] = position
+
+        return position
 
     def get_position(
         self,

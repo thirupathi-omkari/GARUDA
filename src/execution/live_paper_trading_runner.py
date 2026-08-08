@@ -504,6 +504,119 @@ class LivePaperTradingRunner:
         return symbol_state
 
 
+    def replay_missed_candles(
+        self,
+        symbol,
+        dataframe,
+        session_engine,
+    ):
+        """
+        Replay candles that were not processed while
+        GARUDA was stopped.
+
+        Candles are processed chronologically so that
+        SL, target, break-even and trailing-stop state
+        evolve exactly as they would during continuous
+        operation.
+        """
+
+        normalized_symbol = symbol.upper()
+
+        symbol_state = self.get_symbol_state(
+            normalized_symbol
+        )
+
+        if dataframe is None or dataframe.empty:
+
+            return None
+
+        # --------------------------------------------------
+        # SELECT UNPROCESSED CANDLES
+        # --------------------------------------------------
+
+        if (
+            symbol_state.last_processed_candle_time
+            is None
+        ):
+
+            missed_candles = dataframe.copy()
+
+        else:
+
+            missed_candles = dataframe[
+                dataframe["datetime"]
+                > symbol_state.last_processed_candle_time
+            ].copy()
+
+        missed_candles = (
+            missed_candles
+            .sort_values("datetime")
+            .reset_index(drop=True)
+        )
+
+        if missed_candles.empty:
+
+            return None
+
+        # --------------------------------------------------
+        # REPLAY CHRONOLOGICALLY
+        # --------------------------------------------------
+
+        for _, candle in missed_candles.iterrows():
+
+            candle_time = candle["datetime"]
+
+            # ------------------------------------------------
+            # OPEN POSITION
+            # ------------------------------------------------
+
+            if symbol_state.position_open:
+
+                candle_dataframe = dataframe[
+                    dataframe["datetime"]
+                    <= candle_time
+                ].copy()
+
+                market_candle_result = (
+                    session_engine.process_market_candle(
+                        symbol=normalized_symbol,
+                        candle=candle,
+                        dataframe=candle_dataframe,
+                    )
+                )
+
+                # --------------------------------------------
+                # EXIT DURING OFFLINE PERIOD
+                # --------------------------------------------
+
+                if (
+                    market_candle_result.status
+                    == "POSITION_CLOSED"
+                ):
+
+                    self.record_position_closed(
+                        normalized_symbol
+                    )
+
+                    self.mark_candle_processed(
+                        symbol=normalized_symbol,
+                        candle_time=candle_time,
+                    )
+
+                    return market_candle_result
+
+            # ------------------------------------------------
+            # MARK THIS CANDLE AS PROCESSED
+            # ------------------------------------------------
+
+            self.mark_candle_processed(
+                symbol=normalized_symbol,
+                candle_time=candle_time,
+            )
+
+        return None
+
+
     # --------------------------------------------------
     # SINGLE-CYCLE ORCHESTRATION
     # --------------------------------------------------
@@ -822,6 +935,58 @@ class LivePaperTradingRunner:
             candle_time=candle_time,
             strategy_result=strategy_result,
             session_result=session_result,
+        )
+
+    # --------------------------------------------------
+    # PERSISTENCE
+    # --------------------------------------------------
+
+    def save_state(
+        self,
+        state_store,
+        session_engine,
+    ):
+        """
+        Persist complete live paper-trading state.
+        """
+
+        state_store.save(
+            account=session_engine.executor.account,
+            position_manager=(
+                session_engine
+                .executor
+                .position_manager
+            ),
+            runner=self,
+            session_engine=session_engine,
+        )
+
+
+    def restore_state(
+        self,
+        state_store,
+        session_engine,
+    ):
+        """
+        Restore complete live paper-trading state.
+        """
+
+        state_store.restore_account(
+            session_engine.executor.account
+        )
+
+        state_store.restore_positions(
+            session_engine
+            .executor
+            .position_manager
+        )
+
+        state_store.restore_runner(
+            self
+        )
+
+        state_store.restore_exit_levels(
+            session_engine
         )
 
 

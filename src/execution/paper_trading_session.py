@@ -146,6 +146,7 @@ class PaperTradingSessionEngine:
     def __init__(
         self,
         executor: RiskManagedPaperExecutor,
+        state_store=None,
     ):
 
         self.executor = executor
@@ -153,6 +154,25 @@ class PaperTradingSessionEngine:
         self._active_exit_levels = {}
 
         self.trade_journal = TradeCSVJournal()
+
+        self.state_store = state_store
+
+    def _save_state(self):
+        """
+        Persist the current paper account and
+        open-position state when a state store
+        has been configured.
+        """
+
+        if self.state_store is None:
+            return
+
+        self.state_store.save(
+            account=self.executor.account,
+            position_manager=(
+                self.executor.position_manager
+            ),
+        )
 
 
     def process_entry(
@@ -381,6 +401,8 @@ class PaperTradingSessionEngine:
         # --------------------------------------------------
         # POSITION REMAINS OPEN
         # --------------------------------------------------
+
+        self._save_state()
 
         return PaperTradingSessionResult(
             status="POSITION_OPEN",
@@ -724,6 +746,8 @@ class PaperTradingSessionEngine:
             None,
         )
 
+        self._save_state()
+
         return exit_result
 
     def square_off_all_positions(
@@ -780,6 +804,31 @@ class PaperTradingSessionEngine:
             self._active_exit_levels[
                 normalized_symbol
             ]
+        )
+
+    def restore_exit_levels(
+        self,
+        symbol: str,
+        exit_levels: dict,
+    ):
+        """
+        Restore persisted exit-management state
+        for an already-open paper position.
+        """
+
+        normalized_symbol = symbol.upper()
+
+        if not exit_levels:
+            raise ValueError(
+                "Exit levels are required."
+            )
+
+        self._active_exit_levels[
+            normalized_symbol
+        ] = dict(exit_levels)
+
+        return self.get_exit_levels(
+            normalized_symbol
         )
 
 
