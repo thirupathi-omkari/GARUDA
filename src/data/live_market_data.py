@@ -81,6 +81,36 @@ def fetch_live_intraday_data(
         )
 
     # --------------------------------------------------
+    # NORMALIZE KITE DATE PARAMETERS
+    # --------------------------------------------------
+    #
+    # GARUDA may use timezone-aware timestamps
+    # internally. Kite historical_data expects
+    # timezone-naive datetime values.
+    #
+
+    from_date = pd.Timestamp(
+        from_date
+    )
+
+    to_date = pd.Timestamp(
+        to_date
+    )
+
+    if from_date.tzinfo is not None:
+        from_date = from_date.tz_localize(
+            None
+        )
+
+    if to_date.tzinfo is not None:
+        to_date = to_date.tz_localize(
+            None
+        )
+
+    from_date = from_date.to_pydatetime()
+    to_date = to_date.to_pydatetime()
+
+    # --------------------------------------------------
     # FETCH INTRADAY MARKET DATA
     # --------------------------------------------------
 

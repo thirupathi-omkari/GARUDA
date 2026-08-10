@@ -113,12 +113,33 @@ def test_kite_request_parameters_are_preserved():
         interval="5minute",
     )
 
-    assert kite.last_request == {
-        "instrument_token": 123456,
-        "from_date": "2026-07-12",
-        "to_date": "2026-07-12",
-        "interval": "5minute",
-    }
+    assert (
+        kite.last_request["instrument_token"]
+        == 123456
+    )
+
+    assert (
+        kite.last_request["interval"]
+        == "5minute"
+    )
+
+    assert (
+        kite.last_request["from_date"]
+        == datetime(
+            2026,
+            7,
+            12,
+        )
+    )
+
+    assert (
+        kite.last_request["to_date"]
+        == datetime(
+            2026,
+            7,
+            12,
+        )
+    )
 
 
 def test_date_column_is_standardized():
