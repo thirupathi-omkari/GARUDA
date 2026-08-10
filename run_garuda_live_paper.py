@@ -50,6 +50,8 @@ from execution.live_paper_trading_runner import (
 
 from execution.paper_order_manager import PaperOrderManager
 
+from execution.paper_state_store import PaperStateStore
+
 from execution.paper_position_manager import (
     PaperPositionManager,
 )
@@ -390,11 +392,6 @@ def print_final_report(
         f"{net_realized_pnl:.2f}"
     )
 
-    print(
-        f"Net Realized P&L     : "
-        f"{account.realized_pnl:.2f}"
-    )
-
     print()
 
     print(
@@ -464,6 +461,8 @@ def main():
 
     components = create_garuda_components()
 
+    state_store = PaperStateStore()
+
     print("GARUDA Stack         : READY")
 
     (
@@ -473,6 +472,34 @@ def main():
         kite=kite,
         runner=components["runner"],
     )
+
+    # --------------------------------------------------
+    # RESTORE PERSISTED PAPER-TRADING STATE
+    # --------------------------------------------------
+
+    if state_store.exists():
+
+        print()
+        print("=" * 70)
+        print("RESTORING GARUDA PAPER-TRADING STATE")
+        print("=" * 70)
+
+        components["runner"].restore_state(
+            state_store=state_store,
+            session_engine=components["session_engine"],
+        )
+
+        print(
+            f"Restored Capital   : "
+            f"{components['account'].current_capital:.2f}"
+        )
+
+        print(
+            f"Initial Capital    : "
+            f"{components['account'].initial_capital:.2f}"
+        )
+
+        print("=" * 70)
 
     if not registered_symbols:
 
@@ -602,6 +629,21 @@ def main():
         )
 
         print("=" * 70)
+
+    # --------------------------------------------------
+    # PERSIST FINAL PAPER-TRADING STATE
+    # --------------------------------------------------
+
+    components["runner"].save_state(
+        state_store=state_store,
+        session_engine=session_engine,
+    )
+
+    print()
+    print(
+        "GARUDA paper-trading state saved."
+    )
+
 
     print_final_report(
         result=result,
