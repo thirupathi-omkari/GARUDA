@@ -26,6 +26,17 @@ class BacktestTrade:
 
     quantity: int = 1
 
+    # --------------------------------------------------
+    # MFE / MAE
+    # --------------------------------------------------
+
+
+    mfe: float = 0.0
+    mae: float = 0.0
+    mfe_r: float = 0.0
+    mae_r: float = 0.0
+
+
     gross_pnl: float = 0.0
     costs: float = 0.0
     net_pnl: float = 0.0

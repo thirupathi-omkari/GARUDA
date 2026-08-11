@@ -1,3 +1,5 @@
+import pandas as pd
+
 from backtesting.candle_replay import (
     replay_session_candles,
 )
@@ -28,6 +30,7 @@ def run_session_backtest(
     target_pct=2.0,
     cost_rate_pct=0.10,
     slippage_pct=0.05,
+    historical_context=None,
 ):
     """Run one strategy backtest over one trading session."""
 
@@ -44,9 +47,40 @@ def run_session_backtest(
         replay_steps
     ):
 
+        # --------------------------------------------------
+        # STRATEGY CONTEXT
+        #
+        # visible_data contains ONLY the current
+        # trading session.
+        #
+        # historical_context contains candles from
+        # previous sessions and is used only for
+        # indicator warm-up such as ATR.
+        #
+        # This prevents previous-day candles from
+        # becoming part of the current session replay.
+        # --------------------------------------------------
+
+        if (
+            historical_context is not None
+            and not historical_context.empty
+        ):
+
+            strategy_data = pd.concat(
+                [
+                    historical_context,
+                    visible_data,
+                ],
+                ignore_index=True,
+            )
+
+        else:
+
+            strategy_data = visible_data
+
         result = strategy.evaluate(
             symbol=symbol,
-            dataframe=visible_data,
+            dataframe=strategy_data,
         )
 
         if result.signal not in (

@@ -46,6 +46,27 @@ def simulate_trade_exit(
 
     initial_risk = trade.initial_risk
 
+    if initial_risk is None:
+        initial_risk = abs(
+            trade.entry_price - stop_loss
+        )
+
+        trade.initial_risk = initial_risk
+
+    if initial_risk <= 0:
+        raise ValueError(
+            "Initial risk must be greater than zero."
+        )
+
+    # --------------------------------------------------
+    # MFE / MAE INITIALIZATION
+    # --------------------------------------------------
+
+    trade.mfe = 0.0
+    trade.mae = 0.0
+    trade.mfe_r = 0.0
+    trade.mae_r = 0.0
+
     # --------------------------------------------------
     # CANDLE-BY-CANDLE EXIT SIMULATION
     # --------------------------------------------------
@@ -53,6 +74,60 @@ def simulate_trade_exit(
     for candle_index, (_, candle) in enumerate(
         future_candles.iterrows()
     ):
+
+        # --------------------------------------------------
+        # MFE / MAE
+        #
+        # Measure excursion from the entry price using
+        # the current candle BEFORE evaluating its exit.
+        # --------------------------------------------------
+
+        if trade.direction == "BUY":
+
+            favorable_excursion = (
+                candle["high"]
+                - trade.entry_price
+            )
+
+            adverse_excursion = (
+                trade.entry_price
+                - candle["low"]
+            )
+
+        elif trade.direction == "SELL":
+
+            favorable_excursion = (
+                trade.entry_price
+                - candle["low"]
+            )
+
+            adverse_excursion = (
+                candle["high"]
+                - trade.entry_price
+            )
+
+        else:
+            raise ValueError(
+                "Trade direction must be BUY or SELL."
+            )
+
+        trade.mfe = max(
+            trade.mfe,
+            max(0.0, favorable_excursion),
+        )
+
+        trade.mae = max(
+            trade.mae,
+            max(0.0, adverse_excursion),
+        )
+
+        trade.mfe_r = (
+            trade.mfe / initial_risk
+        )
+
+        trade.mae_r = (
+            trade.mae / initial_risk
+        )
 
         # --------------------------------------------------
         # STEP 1
