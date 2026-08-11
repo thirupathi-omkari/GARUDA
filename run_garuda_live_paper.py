@@ -612,6 +612,11 @@ def main():
             .square_off_all_positions()
         )
 
+        for exit_result in closed_positions:
+            components["runner"].record_position_closed(
+                exit_result.position.symbol
+            )
+
         result.runner_summary["closed_trades"] += (
             len(closed_positions)
         )
