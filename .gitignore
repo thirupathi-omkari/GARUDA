@@ -22,7 +22,14 @@ logs/*.log
 .DS_Store
 Thumbs.db
 
-data/raw/
+data/raw/*
+!data/raw/ASHOKLEY_5MIN_REAL.csv
+!data/raw/ICICIBANK_5MIN_REAL.csv
+!data/raw/INFY_5MIN_REAL.csv
+!data/raw/OLAELEC_5MIN_REAL.csv
+!data/raw/RELIANCE_5MIN_REAL.csv
+!data/raw/SUZLON_5MIN_REAL.csv
+!data/raw/TMPV_5MIN_REAL.csv
 
 data/session/
 garuda_repository_snapshot.txt

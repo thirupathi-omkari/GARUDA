@@ -14,8 +14,13 @@ class StrategyResult:
     stop_loss: Optional[float] = None
     target_price: Optional[float] = None
 
+
     reason: Optional[str] = None
 
     diagnostics: Dict[str, Any] = field(
         default_factory=dict
     )
+
+    
+    break_even_enabled: Optional[bool] = None
+    trailing_stop_enabled: Optional[bool] = None

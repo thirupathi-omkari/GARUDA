@@ -396,6 +396,18 @@ class PaperTradingSessionEngine:
             "break_even_done": False,
 
             "trailing_active": False,
+
+            "break_even_enabled": (
+                risk_config.break_even_enabled
+                if strategy_result.break_even_enabled is None
+                else strategy_result.break_even_enabled
+            ),
+
+            "trailing_stop_enabled": (
+                risk_config.trailing_stop_enabled
+                if strategy_result.trailing_stop_enabled is None
+                else strategy_result.trailing_stop_enabled
+            ),
         }
 
         # --------------------------------------------------
@@ -612,7 +624,10 @@ class PaperTradingSessionEngine:
         # --------------------------------------------------
 
         if (
-            risk_config.break_even_enabled
+            exit_levels.get(
+                "break_even_enabled",
+                risk_config.break_even_enabled,
+            )
             and not exit_levels["break_even_done"]
             and current_r_multiple
             >= risk_config.break_even_trigger_multiple
@@ -646,7 +661,10 @@ class PaperTradingSessionEngine:
 
         if (
             dataframe is not None
-            and risk_config.trailing_stop_enabled
+            and exit_levels.get(
+                "trailing_stop_enabled",
+                risk_config.trailing_stop_enabled,
+            )
             and current_r_multiple
             >= risk_config.trailing_activation_multiple
         ):

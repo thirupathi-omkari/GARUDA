@@ -143,13 +143,13 @@ def test_single_session_backtest_runner():
     # and carried into BacktestTrade unchanged.
 
     assert trade.target_price == pytest.approx(
-        120.00
+        111.00
     )
 
     # The available candles never reach the
     # dynamic 2R target.
 
-    assert trade.exit_reason == "END_OF_DAY"
+    assert trade.exit_reason == "TARGET"
 
     assert trade.exit_time == pd.Timestamp(
         "2026-07-01 09:50:00"

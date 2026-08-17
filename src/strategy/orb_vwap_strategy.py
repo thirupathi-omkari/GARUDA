@@ -123,7 +123,7 @@ class ORBVWAPStrategy(BaseStrategy):
         ):
 
             stop_loss = calculate_stop_loss(
-                mode=risk_config.active_stop_loss_mode,
+                mode="ORB_50",
                 signal="BUY",
                 entry_price=latest_close,
                 opening_high=opening_high,
@@ -154,6 +154,8 @@ class ORBVWAPStrategy(BaseStrategy):
                     "confirmed above VWAP"
                 ),
                 diagnostics=diagnostics,
+                break_even_enabled=False,
+                trailing_stop_enabled=False,
             )
 
         # Step 9: SELL decision
@@ -163,7 +165,7 @@ class ORBVWAPStrategy(BaseStrategy):
         ):
 
             stop_loss = calculate_stop_loss(
-                mode=risk_config.active_stop_loss_mode,
+                mode="orb_50",
                 signal="SELL",
                 entry_price=latest_close,
                 opening_high=opening_high,
@@ -194,6 +196,8 @@ class ORBVWAPStrategy(BaseStrategy):
                     "confirmed below VWAP"
                 ),
                 diagnostics=diagnostics,
+                break_even_enabled=False,
+                trailing_stop_enabled=False,
             )
 
         # Step 10: NO SIGNAL decision

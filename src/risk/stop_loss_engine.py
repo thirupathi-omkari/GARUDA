@@ -18,9 +18,16 @@ from risk.stop_losses.vwap_stop import (
     calculate_vwap_stop_loss,
 )
 
+from risk.stop_losses.orb_stop import (
+    calculate_orb_stop_loss,
+    calculate_orb_50_stop_loss,
+)
+
 class StopLossMode(Enum):
 
     ORB = "ORB"
+
+    ORB_50 = "ORB_50"
 
     SWING = "SWING"
 
@@ -45,12 +52,21 @@ def calculate_stop_loss(
     if isinstance(mode, str):
 
         mode = StopLossMode[mode.upper()]
-    
 
     if mode == StopLossMode.ORB:
 
         return calculate_orb_stop_loss(
             signal=signal,
+            opening_high=opening_high,
+            opening_low=opening_low,
+        )
+    
+
+    if mode == StopLossMode.ORB_50:
+
+        return calculate_orb_50_stop_loss(
+            signal=signal,
+            entry_price=entry_price,
             opening_high=opening_high,
             opening_low=opening_low,
         )
