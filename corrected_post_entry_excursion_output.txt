@@ -1,0 +1,86 @@
+==============================================================================================================
+GARUDA — CORRECTED POST-ENTRY EXCURSION ANALYSIS
+==============================================================================================================
+
+RAW TRADE ROWS       : 40
+UNIQUE TRADE COUNT   : 20
+DUPLICATE ROWS       : 20
+
+RESEARCH RULE:
+MFE / MAE begins from the candle AFTER entry_time.
+The entry candle itself is NOT used for post-entry excursion.
+This eliminates same-candle look-ahead contamination.
+
+
+==============================================================================================================
+CORRECTED EXCURSION LADDER
+==============================================================================================================
+
+RAW TRADE ROWS             : 40
+UNIQUE TRADE COUNT         : 20
+DUPLICATE ROWS             : 20
+VALID POST-ENTRY TRADES    : 12
+ENTRY-CANDLE EXIT TRADES   : 8
+
+IMPORTANT:
+Entry-candle OHLC is excluded from MFE/MAE.
+Only candles AFTER entry_time are used.
+
+threshold    reached    reached_%    stopped_after    target_after
+--------------------------------------------------------------------------------
+ 0.50R           9        75.00%               1              4
+ 1.00R           7        58.33%               1              4
+ 1.50R           7        58.33%               1              4
+ 2.00R           4        33.33%               0              4
+
+==============================================================================================================
+CORRECTED MFE / MAE SUMMARY
+==============================================================================================================
+AVG MFE_R       : 1.428
+MEDIAN MFE_R    : 1.723
+P75 MFE_R       : 2.130
+P90 MFE_R       : 2.568
+
+AVG MAE_R       : 0.780
+MEDIAN MAE_R    : 0.915
+P75 MAE_R       : 1.045
+P90 MAE_R       : 1.136
+
+==============================================================================================================
+VALID >= 1.0R THEN STOP_LOSS
+==============================================================================================================
+date        side       entry       MFE_R       MAE_R       MFE_TIME
+----------------------------------------------------------------------------------------------------
+2026-07-24  SELL       1020.4895       1.643       1.349  2026-07-24 11:30:00+05:30
+
+==============================================================================================================
+VALID >= 1.5R THEN STOP_LOSS
+==============================================================================================================
+date        side       entry       MFE_R       MAE_R       MFE_TIME
+----------------------------------------------------------------------------------------------------
+2026-07-24  SELL       1020.4895       1.643       1.349  2026-07-24 11:30:00+05:30
+
+==============================================================================================================
+FULL CORRECTED TRADE AUDIT
+==============================================================================================================
+
+2026-07-01 SELL ENTRY=2026-07-01 09:55:00+05:30 EXIT=2026-07-01 12:10:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=27 MFE_R=2.623 MAE_R=0.000 0.5R=True 1R=True 1.5R=True 2R=True EXIT=TARGET
+2026-07-02 BUY ENTRY=2026-07-02 10:00:00+05:30 EXIT=2026-07-02 15:20:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=64 MFE_R=2.011 MAE_R=0.867 0.5R=True 1R=True 1.5R=True 2R=True EXIT=TARGET
+2026-07-03 SELL ENTRY=2026-07-03 11:00:00+05:30 EXIT=2026-07-03 11:00:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-07 BUY ENTRY=2026-07-07 10:05:00+05:30 EXIT=2026-07-07 10:05:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-10 SELL ENTRY=2026-07-10 09:55:00+05:30 EXIT=2026-07-10 10:15:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=4 MFE_R=0.463 MAE_R=1.146 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-14 SELL ENTRY=2026-07-14 10:45:00+05:30 EXIT=2026-07-14 15:25:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=56 MFE_R=1.804 MAE_R=0.757 0.5R=True 1R=True 1.5R=True 2R=False EXIT=END_OF_DAY
+2026-07-17 SELL ENTRY=2026-07-17 09:50:00+05:30 EXIT=2026-07-17 15:25:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=67 MFE_R=0.773 MAE_R=0.972 0.5R=True 1R=False 1.5R=False 2R=False EXIT=END_OF_DAY
+2026-07-20 SELL ENTRY=2026-07-20 11:45:00+05:30 EXIT=2026-07-20 12:10:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=5 MFE_R=2.577 MAE_R=0.404 0.5R=True 1R=True 1.5R=True 2R=True EXIT=TARGET
+2026-07-21 SELL ENTRY=2026-07-21 10:25:00+05:30 EXIT=2026-07-21 15:25:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=60 MFE_R=0.646 MAE_R=0.809 0.5R=True 1R=False 1.5R=False 2R=False EXIT=END_OF_DAY
+2026-07-22 SELL ENTRY=2026-07-22 10:40:00+05:30 EXIT=2026-07-22 10:40:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-23 BUY ENTRY=2026-07-23 11:50:00+05:30 EXIT=2026-07-23 12:00:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=2 MFE_R=2.486 MAE_R=0.000 0.5R=True 1R=True 1.5R=True 2R=True EXIT=TARGET
+2026-07-24 SELL ENTRY=2026-07-24 10:55:00+05:30 EXIT=2026-07-24 12:20:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=17 MFE_R=1.643 MAE_R=1.349 0.5R=True 1R=True 1.5R=True 2R=False EXIT=STOP_LOSS
+2026-07-27 BUY ENTRY=2026-07-27 09:55:00+05:30 EXIT=2026-07-27 09:55:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-28 BUY ENTRY=2026-07-28 09:55:00+05:30 EXIT=2026-07-28 10:05:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=2 MFE_R=0.000 MAE_R=1.045 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-07-29 BUY ENTRY=2026-07-29 10:40:00+05:30 EXIT=2026-07-29 10:40:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-08-04 SELL ENTRY=2026-08-04 11:50:00+05:30 EXIT=2026-08-04 15:10:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=40 MFE_R=1.874 MAE_R=0.963 0.5R=True 1R=True 1.5R=True 2R=False EXIT=END_OF_DAY
+2026-08-05 SELL ENTRY=2026-08-05 13:45:00+05:30 EXIT=2026-08-05 14:35:00+05:30 ENTRY_CANDLE_EXIT=False POST_CANDLES=10 MFE_R=0.237 MAE_R=1.046 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-08-06 SELL ENTRY=2026-08-06 10:30:00+05:30 EXIT=2026-08-06 10:30:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-08-07 BUY ENTRY=2026-08-07 13:45:00+05:30 EXIT=2026-08-07 13:45:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
+2026-08-10 BUY ENTRY=2026-08-10 13:35:00+05:30 EXIT=2026-08-10 13:35:00+05:30 ENTRY_CANDLE_EXIT=True POST_CANDLES=0 MFE_R=0.000 MAE_R=0.000 0.5R=False 1R=False 1.5R=False 2R=False EXIT=STOP_LOSS
