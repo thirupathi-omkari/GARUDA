@@ -26,7 +26,7 @@ class RiskConfig:
     # Stop Loss Configuration
     # --------------------------------------------------
 
-    active_stop_loss_mode: str = "ORB"
+    active_stop_loss_mode: str = "ORB_50"
 
     atr_period: int = 14
 
