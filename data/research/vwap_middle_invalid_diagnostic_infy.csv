@@ -1,0 +1,2 @@
+trade_date,direction,signal_time,entry_time,entry_open_raw,entry_price_after_slippage,entry_vwap,risk,entry_high,entry_low,entry_close,signal_vwap
+2025-09-05,SELL,2025-09-05 10:05:00+05:30,2025-09-05 10:10:00+05:30,1429.7,1428.98515,1427.7306723539093,-1.2544776460906633,1429.7,1408.6,1413.7,1436.5350372117398
