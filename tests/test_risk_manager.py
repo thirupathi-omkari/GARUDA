@@ -130,7 +130,7 @@ def test_risk_manager_rejects_quantity_below_minimum_lot():
     assert decision.approved_quantity == 0
 
 
-def test_risk_manager_rejects_max_portfolio_exposure():
+def test_risk_manager_reduces_quantity_to_exposure_limit():
 
     manager = create_risk_manager()
 
@@ -144,20 +144,31 @@ def test_risk_manager_rejects_max_portfolio_exposure():
         daily_realized_pnl=0.00,
     )
 
-    assert decision.approved is False
-
-    assert (
-        decision.reason
-        == "MAX_PORTFOLIO_EXPOSURE"
-    )
-
+    assert decision.approved is True
+    assert decision.reason == "APPROVED"
+    assert decision.approved_quantity == 75
+    assert decision.proposed_exposure == 37500.00
     assert decision.risk_amount == 1000.00
 
-    assert decision.raw_position_size == 100
+def test_exposure_capped_quantity_can_still_fail_portfolio_risk():
 
-    assert decision.approved_quantity == 100
+    manager = create_risk_manager()
 
-    assert decision.proposed_exposure == 50000.00
+    decision = manager.evaluate_trade(
+        entry_price=500.00,
+        stop_loss_price=490.00,
+        lot_size=25,
+        current_exposure=10000.00,
+        current_open_risk=4500.00,
+        current_open_positions=1,
+        daily_realized_pnl=0.00,
+    )
+
+    assert decision.approved is False
+    assert decision.reason == "MAX_PORTFOLIO_RISK"
+    assert decision.approved_quantity == 75
+    assert decision.proposed_exposure == 37500.00
+    assert decision.risk_amount == 1000.00
 
 
 def test_risk_manager_rejects_max_portfolio_risk():

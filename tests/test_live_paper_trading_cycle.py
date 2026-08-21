@@ -521,7 +521,7 @@ def test_sell_signal_opens_short_position():
 # ============================================================
 
 
-def test_risk_rejection_updates_runner_state():
+def test_exposure_limit_reduces_quantity_and_executes():
 
     runner = create_runner()
 
@@ -549,26 +549,14 @@ def test_risk_rejection_updates_runner_state():
         runner.get_symbol_state("INFY")
     )
 
-    assert result.status == "REJECTED"
+    assert result.status == "POSITION_OPEN"
 
-    assert (
-        symbol_state.rejected_trade_count
-        == 1
-    )
+    assert symbol_state.executed_trade_count == 1
+    assert symbol_state.rejected_trade_count == 0
+    assert symbol_state.position_open
 
-    assert (
-        symbol_state.executed_trade_count
-        == 0
-    )
-
-    assert not symbol_state.position_open
-
-    assert order_manager.order_count == 0
-
-    assert (
-        position_manager.position_count
-        == 0
-    )
+    assert order_manager.order_count == 1
+    assert position_manager.position_count == 1
 
 
 # ============================================================

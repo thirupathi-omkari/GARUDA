@@ -188,72 +188,85 @@ class RiskManager:
         )
 
         # --------------------------------------------------
-        # PORTFOLIO EXPOSURE CHECK
+        # PORTFOLIO EXPOSURE CAP
+        #
+        # If the risk-sized quantity exceeds the remaining
+        # portfolio exposure, reduce the quantity to the
+        # maximum affordable lot instead of rejecting the
+        # trade outright.
         # --------------------------------------------------
 
-        if not is_exposure_allowed(
-            current_capital=current_capital,
-            max_portfolio_exposure_pct=(
-                self.config.max_portfolio_exposure_pct
-            ),
-            current_exposure=current_exposure,
-            proposed_exposure=proposed_exposure,
+        max_portfolio_exposure = (
+            current_capital
+            * self.config.max_portfolio_exposure_pct
+            / 100.0
+        )
+
+        available_exposure = max(
+            max_portfolio_exposure
+            - current_exposure,
+            0.0,
+        )
+
+        if (
+            entry_price <= 0
+            or lot_size <= 0
         ):
-
-            max_portfolio_exposure = (
-                current_capital
-                * self.config.max_portfolio_exposure_pct
-                / 100.0
-            )
-
-            available_exposure = max(
-                max_portfolio_exposure - current_exposure,
-                0.0,
-            )
-
-            max_affordable_quantity = int(
-                available_exposure // entry_price
-            ) if entry_price > 0 else 0
-
-            max_affordable_quantity = (
-                max_affordable_quantity // lot_size
-            ) * lot_size if lot_size > 0 else 0
-
-            print()
-            print('\n' + '=' * 70)
-            print('GARUDA PORTFOLIO EXPOSURE AUDIT — REJECTION')
-            print('=' * 70)
-            print(f'Current Capital              : {current_capital:,.2f}')
-            print(f'Max Exposure Limit           : {self.config.max_portfolio_exposure_pct:.2f}%')
-            print(f'Max Portfolio Exposure       : {max_portfolio_exposure:,.2f}')
-            print(f'Current Open Exposure        : {current_exposure:,.2f}')
-            print(f'Available Exposure           : {available_exposure:,.2f}')
-            print('-' * 70)
-            print(f'Entry Price                  : {entry_price:,.2f}')
-            print(f'Stop Loss Price              : {stop_loss_price:,.2f}')
-            print(f'Lot Size                     : {lot_size:,}')
-            print(f'Risk Amount                  : {risk_amount:,.2f}')
-            print(f'Raw Position Size            : {raw_position_size:,}')
-            print(f'Requested Quantity            : {approved_quantity:,}')
-            print(f'Requested Trade Exposure      : {proposed_exposure:,.2f}')
-            print(f'Max Affordable Quantity       : {max_affordable_quantity:,}')
-            print(f'Max Affordable Exposure      : {max_affordable_quantity * entry_price:,.2f}')
-            print('-' * 70)
-            print(f'Current Exposure + Required  : {current_exposure + proposed_exposure:,.2f}')
-            print(f'Exposure Limit                : {max_portfolio_exposure:,.2f}')
-            print('Decision                     : REJECTED')
-            print('Reason                       : MAX_PORTFOLIO_EXPOSURE')
-            print('=' * 70)
-
             return RiskDecision(
                 approved=False,
                 reason="MAX_PORTFOLIO_EXPOSURE",
                 risk_amount=risk_amount,
                 raw_position_size=raw_position_size,
-                approved_quantity=approved_quantity,
-                proposed_exposure=proposed_exposure,
+                approved_quantity=0,
+                proposed_exposure=0.0,
                 stop_loss_price=stop_loss_price,
             )
+
+        max_affordable_quantity = int(
+            available_exposure
+            // entry_price
+        )
+
+        max_affordable_quantity = (
+            max_affordable_quantity
+            // lot_size
+        ) * lot_size
+
+        approved_quantity = min(
+            approved_quantity,
+            max_affordable_quantity,
+        )
+
+        # No complete lot can fit inside the remaining
+        # portfolio exposure.
+        if approved_quantity <= 0:
+            return RiskDecision(
+                approved=False,
+                reason="MAX_PORTFOLIO_EXPOSURE",
+                risk_amount=risk_amount,
+                raw_position_size=raw_position_size,
+                approved_quantity=0,
+                proposed_exposure=0.0,
+                stop_loss_price=stop_loss_price,
+            )
+
+        proposed_exposure = (
+            approved_quantity
+            * entry_price
+        )
+
+        # --------------------------------------------------
+        # ACTUAL TRADE RISK
+        #
+        # Recalculate risk after exposure-based quantity
+        # reduction. Portfolio risk must use the quantity
+        # GARUDA will actually execute.
+        # --------------------------------------------------
+
+        actual_trade_risk = (
+            abs(entry_price - stop_loss_price)
+            * approved_quantity
+        )
 
         # --------------------------------------------------
         # PORTFOLIO RISK CHECK
@@ -265,9 +278,8 @@ class RiskManager:
                 self.config.max_portfolio_risk_pct
             ),
             current_open_risk=current_open_risk,
-            proposed_trade_risk=risk_amount,
+            proposed_trade_risk=actual_trade_risk,
         ):
-
             return RiskDecision(
                 approved=False,
                 reason="MAX_PORTFOLIO_RISK",
