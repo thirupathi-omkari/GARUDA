@@ -108,8 +108,9 @@ class PaperStateStore:
                         is not None
                         else None
                     ),
-                    "position_open": (
-                        symbol_state.position_open
+                    "position_open": any(
+                        position.symbol.upper() == symbol.upper()
+                        for position in position_manager.positions
                     ),
                     "processed_candle_count": (
                         symbol_state.processed_candle_count
@@ -251,7 +252,25 @@ class PaperStateStore:
     def restore_runner(
         self,
         runner,
+        position_manager=None,
     ):
+        """
+        Restore runner state.
+
+        IMPORTANT:
+        The PaperPositionManager is the authoritative source
+        for whether a symbol currently has an open position.
+
+        The persisted runner.position_open flag is therefore
+        never trusted during restore when a position manager
+        is supplied.
+
+        This prevents stale runner state such as:
+
+            runner.position_open = True
+            positions = []
+
+        """
 
         state = self.load()
 
@@ -264,6 +283,24 @@ class PaperStateStore:
 
         if runner_state is None:
             return
+
+        # ------------------------------------------------------
+        # AUTHORITATIVE OPEN-POSITION SET
+        # ------------------------------------------------------
+
+        open_symbols = set()
+
+        if position_manager is not None:
+
+            open_symbols = {
+                position.symbol.upper()
+                for position
+                in position_manager.positions
+            }
+
+        # ------------------------------------------------------
+        # RESTORE RUNNER SYMBOL STATE
+        # ------------------------------------------------------
 
         for (
             symbol,
@@ -296,6 +333,10 @@ class PaperStateStore:
                 )
             )
 
+            # --------------------------------------------------
+            # CANDLE STATE
+            # --------------------------------------------------
+
             last_processed = (
                 saved_symbol[
                     "last_processed_candle_time"
@@ -324,11 +365,35 @@ class PaperStateStore:
                     )
                 )
 
-            symbol_state.position_open = (
-                saved_symbol[
-                    "position_open"
-                ]
-            )
+            # --------------------------------------------------
+            # POSITION STATE
+            # --------------------------------------------------
+
+            if position_manager is not None:
+
+                # AUTHORITATIVE:
+                # position manager decides whether a position
+                # actually exists.
+
+                symbol_state.position_open = (
+                    normalized_symbol
+                    in open_symbols
+                )
+
+            else:
+
+                # Backward compatibility for callers that do
+                # not provide a position manager.
+
+                symbol_state.position_open = (
+                    saved_symbol[
+                        "position_open"
+                    ]
+                )
+
+            # --------------------------------------------------
+            # COUNTERS
+            # --------------------------------------------------
 
             symbol_state.processed_candle_count = (
                 saved_symbol[

@@ -982,7 +982,12 @@ class LivePaperTradingRunner:
         )
 
         state_store.restore_runner(
-            self
+            self,
+            position_manager=(
+                session_engine
+                .executor
+                .position_manager
+            ),
         )
 
         state_store.restore_exit_levels(

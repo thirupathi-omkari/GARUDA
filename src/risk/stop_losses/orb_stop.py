@@ -64,3 +64,15 @@ def calculate_orb_50_stop_loss(
     raise ValueError(
         "Signal must be BUY or SELL."
     )
+# Backward-compatible alias
+def calculate_orb_stop(
+    signal: str,
+    opening_high: float,
+    opening_low: float,
+):
+    return calculate_orb_stop_loss(
+        signal=signal,
+        opening_high=opening_high,
+        opening_low=opening_low,
+    )
+

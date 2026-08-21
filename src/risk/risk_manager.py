@@ -67,9 +67,7 @@ class RiskManager:
     ):
 
         self.account = account
-
         self.config = config
-
 
     def evaluate_trade(
         self,
@@ -84,6 +82,17 @@ class RiskManager:
         """
         Evaluate a proposed trade against
         GARUDA risk rules.
+
+        Order of checks:
+
+        1. Daily loss
+        2. Maximum open positions
+        3. Risk amount
+        4. Raw position size
+        5. Lot-size adjustment
+        6. Portfolio exposure
+        7. Portfolio risk
+        8. Approval
         """
 
         current_capital = (
@@ -164,6 +173,9 @@ class RiskManager:
                 reason="QUANTITY_BELOW_MINIMUM_LOT",
                 risk_amount=risk_amount,
                 raw_position_size=raw_position_size,
+                approved_quantity=0,
+                proposed_exposure=0.0,
+                stop_loss_price=stop_loss_price,
             )
 
         # --------------------------------------------------
@@ -176,18 +188,62 @@ class RiskManager:
         )
 
         # --------------------------------------------------
-        # EXPOSURE CHECK
+        # PORTFOLIO EXPOSURE CHECK
         # --------------------------------------------------
 
         if not is_exposure_allowed(
             current_capital=current_capital,
             max_portfolio_exposure_pct=(
-                self.config
-                .max_portfolio_exposure_pct
+                self.config.max_portfolio_exposure_pct
             ),
             current_exposure=current_exposure,
             proposed_exposure=proposed_exposure,
         ):
+
+            max_portfolio_exposure = (
+                current_capital
+                * self.config.max_portfolio_exposure_pct
+                / 100.0
+            )
+
+            available_exposure = max(
+                max_portfolio_exposure - current_exposure,
+                0.0,
+            )
+
+            max_affordable_quantity = int(
+                available_exposure // entry_price
+            ) if entry_price > 0 else 0
+
+            max_affordable_quantity = (
+                max_affordable_quantity // lot_size
+            ) * lot_size if lot_size > 0 else 0
+
+            print()
+            print('\n' + '=' * 70)
+            print('GARUDA PORTFOLIO EXPOSURE AUDIT — REJECTION')
+            print('=' * 70)
+            print(f'Current Capital              : {current_capital:,.2f}')
+            print(f'Max Exposure Limit           : {self.config.max_portfolio_exposure_pct:.2f}%')
+            print(f'Max Portfolio Exposure       : {max_portfolio_exposure:,.2f}')
+            print(f'Current Open Exposure        : {current_exposure:,.2f}')
+            print(f'Available Exposure           : {available_exposure:,.2f}')
+            print('-' * 70)
+            print(f'Entry Price                  : {entry_price:,.2f}')
+            print(f'Stop Loss Price              : {stop_loss_price:,.2f}')
+            print(f'Lot Size                     : {lot_size:,}')
+            print(f'Risk Amount                  : {risk_amount:,.2f}')
+            print(f'Raw Position Size            : {raw_position_size:,}')
+            print(f'Requested Quantity            : {approved_quantity:,}')
+            print(f'Requested Trade Exposure      : {proposed_exposure:,.2f}')
+            print(f'Max Affordable Quantity       : {max_affordable_quantity:,}')
+            print(f'Max Affordable Exposure      : {max_affordable_quantity * entry_price:,.2f}')
+            print('-' * 70)
+            print(f'Current Exposure + Required  : {current_exposure + proposed_exposure:,.2f}')
+            print(f'Exposure Limit                : {max_portfolio_exposure:,.2f}')
+            print('Decision                     : REJECTED')
+            print('Reason                       : MAX_PORTFOLIO_EXPOSURE')
+            print('=' * 70)
 
             return RiskDecision(
                 approved=False,
@@ -196,6 +252,7 @@ class RiskManager:
                 raw_position_size=raw_position_size,
                 approved_quantity=approved_quantity,
                 proposed_exposure=proposed_exposure,
+                stop_loss_price=stop_loss_price,
             )
 
         # --------------------------------------------------
@@ -218,6 +275,7 @@ class RiskManager:
                 raw_position_size=raw_position_size,
                 approved_quantity=approved_quantity,
                 proposed_exposure=proposed_exposure,
+                stop_loss_price=stop_loss_price,
             )
 
         # --------------------------------------------------
